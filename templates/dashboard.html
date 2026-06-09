@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Inventory Management</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-image:
+                linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)),
+                url("{{ url_for('static', filename='bg1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            transition: background-image 1.2s ease-in-out;
+            color: white;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.14), transparent 35%);
+            z-index: -1;
+        }
+
+        .navbar {
+            background: rgba(2, 6, 23, 0.78);
+            color: white;
+            padding: 14px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 0.4px;
+        }
+
+        .navbar-links {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 10px;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 13px;
+            transition: 0.25s;
+        }
+
+        .navbar a:hover,
+        .navbar a.active {
+            color: #38bdf8;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .container {
+            padding: 32px;
+            max-width: 1500px;
+            margin: auto;
+        }
+
+        .flash-area {
+            margin-bottom: 18px;
+        }
+
+        .flash {
+            padding: 13px 16px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            animation: messageFade 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .flash.success {
+            background: rgba(34, 197, 94, 0.18);
+            color: #bbf7d0;
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            border-left: 5px solid #22c55e;
+        }
+
+        .flash.error {
+            background: rgba(239, 68, 68, 0.20);
+            color: #fecaca;
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            border-left: 5px solid #ef4444;
+        }
+
+        .flash.warning {
+            background: rgba(245, 158, 11, 0.18);
+            color: #fde68a;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            border-left: 5px solid #f59e0b;
+        }
+
+        @keyframes messageFade {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 22px;
+            margin-bottom: 22px;
+        }
+
+        .hero-title h1 {
+            margin: 0;
+            font-size: 38px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+        }
+
+        .hero-title p {
+            margin: 9px 0 0;
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.84);
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+            line-height: 1.6;
+            max-width: 780px;
+        }
+
+        .health-box {
+            min-width: 260px;
+            background: rgba(15, 23, 42, 0.54);
+            padding: 16px 18px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-top: 4px solid #22c55e;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+        }
+
+        .health-box h3 {
+            margin: 0 0 7px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.70);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .health-box p {
+            margin: 0;
+            font-weight: bold;
+            font-size: 24px;
+            color: #bbf7d0;
+        }
+
+        .health-box small {
+            display: block;
+            margin-top: 6px;
+            color: rgba(255, 255, 255, 0.70);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .warning-banner {
+            background: rgba(251, 146, 60, 0.20);
+            color: #fed7aa;
+            border-left: 5px solid #fb923c;
+            padding: 13px 15px;
+            border-radius: 13px;
+            margin-bottom: 18px;
+            font-weight: bold;
+            line-height: 1.6;
+            border-top: 1px solid rgba(255, 255, 255, 0.10);
+            border-right: 1px solid rgba(255, 255, 255, 0.10);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 18px;
+        }
+
+        .card {
+            position: relative;
+            overflow: hidden;
+            background: rgba(15, 23, 42, 0.52);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+            padding: 18px;
+            border-radius: 18px;
+            border-top: 4px solid #38bdf8;
+            transition: 0.25s;
+            min-height: 118px;
+        }
+
+        .card::after {
+            content: "";
+            position: absolute;
+            right: -30px;
+            top: -30px;
+            width: 95px;
+            height: 95px;
+            border-radius: 50%;
+            background: rgba(56, 189, 248, 0.12);
+        }
+
+        .card:hover {
+            background: rgba(15, 23, 42, 0.68);
+            transform: translateY(-3px);
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
+        }
+
+        .card h3 {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card p {
+            font-size: 26px;
+            font-weight: bold;
+            margin: 12px 0 0;
+            color: white;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card span {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.62);
+            position: relative;
+            z-index: 1;
+        }
+
+        .card.stock {
+            border-top-color: #22c55e;
+        }
+
+        .card.stock::after {
+            background: rgba(34, 197, 94, 0.13);
+        }
+
+        .card.low {
+            border-top-color: #ef4444;
+        }
+
+        .card.low::after {
+            background: rgba(239, 68, 68, 0.13);
+        }
+
+        .card.value {
+            border-top-color: #f59e0b;
+        }
+
+        .card.value::after {
+            background: rgba(245, 158, 11, 0.13);
+        }
+
+        .card.supplier {
+            border-top-color: #8b5cf6;
+        }
+
+        .card.supplier::after {
+            background: rgba(139, 92, 246, 0.13);
+        }
+
+        .stock p {
+            color: #bbf7d0;
+        }
+
+        .low p {
+            color: #fca5a5;
+        }
+
+        .value p {
+            color: #fed7aa;
+        }
+
+        .supplier p {
+            color: #ddd6fe;
+        }
+
+        .quick-actions-floating {
+            display: flex;
+            gap: 11px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .quick-actions-floating a {
+            display: inline-block;
+            padding: 11px 17px;
+            border-radius: 999px;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26);
+            transition: 0.25s;
+        }
+
+        .quick-actions-floating a:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .btn-products {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.84), rgba(37, 99, 235, 0.84));
+        }
+
+        .btn-low {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.84), rgba(220, 38, 38, 0.84));
+        }
+
+        .btn-stock {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.84), rgba(22, 163, 74, 0.84));
+        }
+
+        .btn-reports {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.84), rgba(217, 119, 6, 0.84));
+        }
+
+        .btn-suppliers {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.84), rgba(124, 58, 237, 0.84));
+        }
+
+        .insight-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .insight-card {
+            background: rgba(15, 23, 42, 0.50);
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 17px 18px;
+            border-radius: 18px;
+            border-left: 5px solid #38bdf8;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+        }
+
+        .insight-card h3 {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.70);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .insight-card p {
+            margin: 9px 0 0;
+            color: white;
+            font-size: 21px;
+            font-weight: bold;
+        }
+
+        .insight-card span {
+            display: block;
+            margin-top: 5px;
+            color: rgba(255, 255, 255, 0.62);
+            font-size: 12px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2.1fr 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .section {
+            background: rgba(15, 23, 42, 0.50);
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+            padding: 18px;
+            border-radius: 18px;
+            min-width: 0;
+        }
+
+        .section h3 {
+            margin: 0 0 13px;
+            color: white;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            padding-bottom: 11px;
+            font-size: 19px;
+        }
+
+        .chart-box {
+            height: 240px;
+        }
+
+        .small-chart-box {
+            height: 220px;
+        }
+
+        .side-summary {
+            display: grid;
+            gap: 12px;
+        }
+
+        .mini-panel {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 14px;
+            border-radius: 15px;
+        }
+
+        .mini-panel h4 {
+            margin: 0 0 7px;
+            color: rgba(255, 255, 255, 0.70);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+        }
+
+        .mini-panel p {
+            margin: 0;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: white;
+            min-width: 600px;
+            background: rgba(15, 23, 42, 0.35);
+        }
+
+        th,
+        td {
+            padding: 11px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+            text-align: left;
+            font-size: 12.5px;
+            vertical-align: middle;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e0f2fe;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        tr:hover {
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .badge {
+            padding: 5px 9px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: bold;
+            display: inline-block;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+
+        .badge-in {
+            background: rgba(34, 197, 94, 0.23);
+            color: #bbf7d0;
+            border-color: rgba(34, 197, 94, 0.28);
+        }
+
+        .badge-out {
+            background: rgba(245, 158, 11, 0.23);
+            color: #fed7aa;
+            border-color: rgba(245, 158, 11, 0.28);
+        }
+
+        .low-badge {
+            background: rgba(239, 68, 68, 0.24);
+            color: #fecaca;
+            border: 1px solid rgba(239, 68, 68, 0.30);
+            padding: 5px 9px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 22px;
+            color: rgba(255, 255, 255, 0.72);
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 14px;
+            border: 1px dashed rgba(255, 255, 255, 0.14);
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.75);
+            padding: 20px;
+            font-size: 13px;
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+        }
+
+        @media(max-width: 1200px) {
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .main-grid,
+            .chart-grid,
+            .bottom-grid,
+            .insight-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media(max-width: 740px) {
+            .navbar {
+                flex-direction: column;
+                gap: 12px;
+                padding: 15px;
+            }
+
+            .navbar-links {
+                justify-content: center;
+            }
+
+            .container {
+                padding: 24px 16px;
+            }
+
+            .hero-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .hero-title h1 {
+                font-size: 30px;
+            }
+
+            .health-box {
+                width: 100%;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-actions-floating {
+                flex-direction: column;
+            }
+
+            .quick-actions-floating a {
+                text-align: center;
+            }
+
+            .chart-box {
+                height: 220px;
+            }
+
+            .small-chart-box {
+                height: 210px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="navbar">
+        <h2>Inventory Management</h2>
+
+        <div class="navbar-links">
+            <a class="active" href="/dashboard">Dashboard</a>
+            <a href="/products">Products</a>
+            <a href="/low-stock">Low Stock</a>
+            <a href="/stock-history">Stock History</a>
+            <a href="/reports">Reports</a>
+            <a href="/export-products">Export CSV</a>
+            <a href="/suppliers">Suppliers</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-area">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="hero-row">
+            <div class="hero-title">
+                <h1>Inventory Analytics Dashboard</h1>
+                <p>Track stock value, product health, supplier activity, categories, and stock movement trends.</p>
+            </div>
+
+            <div class="health-box">
+                <h3>Inventory Health</h3>
+                <p>{{ inventory_health }}</p>
+                <small>{{ inventory_health_message }}</small>
+            </div>
+        </div>
+
+        {% if low_stock_count > 0 %}
+            <div class="warning-banner">
+                Warning: {{ low_stock_count }} product(s) are currently low in stock. Please review them soon.
+            </div>
+        {% endif %}
+
+        <div class="cards">
+            <div class="card">
+                <h3>Total Products</h3>
+                <p>{{ total_products }}</p>
+                <span>All registered products</span>
+            </div>
+
+            <div class="card stock">
+                <h3>Total Stock</h3>
+                <p>{{ total_stock }}</p>
+                <span>Total available units</span>
+            </div>
+
+            <div class="card low">
+                <h3>Low Stock Items</h3>
+                <p>{{ low_stock_count }}</p>
+                <span>Products with quantity 5 or less</span>
+            </div>
+
+            <div class="card value">
+                <h3>Total Stock Value</h3>
+                <p>৳{{ "%.2f"|format(total_stock_value) }}</p>
+                <span>Quantity × price</span>
+            </div>
+
+            <div class="card supplier">
+                <h3>Total Suppliers</h3>
+                <p>{{ total_suppliers }}</p>
+                <span>Connected supplier records</span>
+            </div>
+        </div>
+
+        <div class="quick-actions-floating">
+            <a class="btn-products" href="/products">Manage Products</a>
+            <a class="btn-low" href="/low-stock">View Low Stock</a>
+            <a class="btn-stock" href="/stock-history">Stock History</a>
+            <a class="btn-reports" href="/reports">View Reports</a>
+            <a class="btn-suppliers" href="/suppliers">Manage Suppliers</a>
+        </div>
+
+        <div class="insight-grid">
+            <div class="insight-card">
+                <h3>Most Stocked Product</h3>
+                <p>{{ most_stocked_name }}</p>
+                <span>{{ most_stocked_quantity }} unit(s) available</span>
+            </div>
+
+            <div class="insight-card">
+                <h3>Most Valuable Product</h3>
+                <p>{{ most_valuable_name }}</p>
+                <span>৳{{ "%.2f"|format(most_valuable_value) }} total value</span>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="section">
+                <h3>Top Products by Quantity</h3>
+
+                {% if product_names %}
+                    <div class="chart-box">
+                        <canvas id="stockChart"></canvas>
+                    </div>
+                {% else %}
+                    <div class="empty">No product data available for chart.</div>
+                {% endif %}
+            </div>
+
+            <div class="section">
+                <h3>Dashboard Summary</h3>
+
+                <div class="side-summary">
+                    <div class="mini-panel">
+                        <h4>Current Products</h4>
+                        <p>{{ total_products }}</p>
+                    </div>
+
+                    <div class="mini-panel">
+                        <h4>Stock Units</h4>
+                        <p>{{ total_stock }}</p>
+                    </div>
+
+                    <div class="mini-panel">
+                        <h4>Low Stock Alert</h4>
+                        <p>{{ low_stock_count }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="section">
+                <h3>Products by Category</h3>
+
+                {% if category_names %}
+                    <div class="small-chart-box">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                {% else %}
+                    <div class="empty">No category data available.</div>
+                {% endif %}
+            </div>
+
+            <div class="section">
+                <h3>Stock In vs Stock Out</h3>
+
+                {% if total_stock_in > 0 or total_stock_out > 0 %}
+                    <div class="small-chart-box">
+                        <canvas id="movementChart"></canvas>
+                    </div>
+                {% else %}
+                    <div class="empty">No stock movement data available.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="bottom-grid">
+            <div class="section">
+                <h3>Recent Stock Movements</h3>
+
+                {% if recent_movements %}
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>SKU</th>
+                                    <th>Type</th>
+                                    <th>Qty</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for movement in recent_movements %}
+                                    <tr>
+                                        <td>{{ movement["product_name"] }}</td>
+                                        <td>{{ movement["sku"] }}</td>
+
+                                        <td>
+                                            {% if movement["movement_type"] == "Stock In" %}
+                                                <span class="badge badge-in">Stock In</span>
+                                            {% elif movement["movement_type"] == "Stock Out" %}
+                                                <span class="badge badge-out">Stock Out</span>
+                                            {% else %}
+                                                {{ movement["movement_type"] }}
+                                            {% endif %}
+                                        </td>
+
+                                        <td>{{ movement["quantity"] }}</td>
+                                        <td>{{ movement["date"] }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty">No recent stock movements found.</div>
+                {% endif %}
+            </div>
+
+            <div class="section">
+                <h3>Low Stock Products</h3>
+
+                {% if low_stock_products %}
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>SKU</th>
+                                    <th>Qty</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for product in low_stock_products %}
+                                    <tr>
+                                        <td>{{ product["name"] }}</td>
+                                        <td>{{ product["sku"] }}</td>
+                                        <td>{{ product["quantity"] }}</td>
+                                        <td><span class="low-badge">Low</span></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty">No low stock products. Everything looks good.</div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Inventory Management System | Analytics Dashboard
+    </div>
+
+    <script>
+        const backgrounds = [
+            "{{ url_for('static', filename='bg1.jpg') }}",
+            "{{ url_for('static', filename='bg2.jpg') }}",
+            "{{ url_for('static', filename='bg3.jpg') }}",
+            "{{ url_for('static', filename='bg4.jpg') }}",
+            "{{ url_for('static', filename='bg5.jpg') }}",
+            "{{ url_for('static', filename='bg6.jpg') }}"
+        ];
+
+        let currentBg = 0;
+
+        function changeBackground() {
+            currentBg = (currentBg + 1) % backgrounds.length;
+
+            document.body.style.backgroundImage =
+                `linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)), url('${backgrounds[currentBg]}')`;
+        }
+
+        setInterval(changeBackground, 5000);
+    </script>
+
+    {% if product_names %}
+        <script>
+            const productNames = {{ product_names | tojson }};
+            const productQuantities = {{ product_quantities | tojson }};
+
+            const stockCtx = document.getElementById('stockChart');
+
+            new Chart(stockCtx, {
+                type: 'bar',
+                data: {
+                    labels: productNames,
+                    datasets: [{
+                        label: 'Quantity',
+                        data: productQuantities,
+                        backgroundColor: 'rgba(56, 189, 248, 0.72)',
+                        borderColor: 'rgba(14, 165, 233, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    },
+
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: 'rgba(255,255,255,0.78)'
+                            },
+                            grid: {
+                                color: 'rgba(255,255,255,0.10)'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: 'rgba(255,255,255,0.78)',
+                                precision: 0
+                            },
+                            grid: {
+                                color: 'rgba(255,255,255,0.10)'
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+    {% endif %}
+
+    {% if category_names %}
+        <script>
+            const categoryNames = {{ category_names | tojson }};
+            const categoryCounts = {{ category_counts | tojson }};
+
+            const categoryCtx = document.getElementById('categoryChart');
+
+            new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: categoryNames,
+                    datasets: [{
+                        label: 'Products',
+                        data: categoryCounts,
+                        backgroundColor: [
+                            'rgba(56, 189, 248, 0.78)',
+                            'rgba(34, 197, 94, 0.78)',
+                            'rgba(245, 158, 11, 0.78)',
+                            'rgba(239, 68, 68, 0.78)',
+                            'rgba(139, 92, 246, 0.78)',
+                            'rgba(20, 184, 166, 0.78)',
+                            'rgba(236, 72, 153, 0.78)',
+                            'rgba(100, 116, 139, 0.78)',
+                            'rgba(132, 204, 22, 0.78)'
+                        ],
+                        borderColor: 'rgba(255,255,255,0.32)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+    {% endif %}
+
+    {% if total_stock_in > 0 or total_stock_out > 0 %}
+        <script>
+            const movementLabels = {{ stock_movement_labels | tojson }};
+            const movementValues = {{ stock_movement_values | tojson }};
+
+            const movementCtx = document.getElementById('movementChart');
+
+            new Chart(movementCtx, {
+                type: 'pie',
+                data: {
+                    labels: movementLabels,
+                    datasets: [{
+                        label: 'Quantity',
+                        data: movementValues,
+                        backgroundColor: [
+                            'rgba(34, 197, 94, 0.78)',
+                            'rgba(245, 158, 11, 0.78)'
+                        ],
+                        borderColor: 'rgba(255,255,255,0.32)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+    {% endif %}
+
+</body>
+</html>

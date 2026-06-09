@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Printable Inventory Report</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: #f8fafc;
+            background:
+                linear-gradient(rgba(2, 6, 23, 0.86), rgba(2, 6, 23, 0.92)),
+                url("{{ url_for('static', filename='bg1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 30px;
+        }
+
+        .report-container {
+            max-width: 1250px;
+            margin: auto;
+            padding: 34px;
+            border-radius: 24px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 25px 75px rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(15px);
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+            margin-bottom: 22px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        .brand-block h1 {
+            margin: 0;
+            font-size: 36px;
+            letter-spacing: 1px;
+            color: #38bdf8;
+        }
+
+        .brand-block p {
+            margin: 8px 0 0;
+            color: #cbd5e1;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .report-badge {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: rgba(56, 189, 248, 0.14);
+            color: #bae6fd;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+
+        .report-meta {
+            min-width: 250px;
+            padding: 15px;
+            border-radius: 16px;
+            background: rgba(30, 41, 59, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            text-align: right;
+            line-height: 1.7;
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+
+        .report-meta p {
+            margin: 3px 0;
+        }
+
+        .btn-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .print-btn,
+        .back-btn {
+            display: inline-block;
+            padding: 11px 17px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.25s ease;
+        }
+
+        .print-btn {
+            background: linear-gradient(135deg, #16a34a, #22c55e);
+        }
+
+        .print-btn:hover,
+        .back-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .print-btn:hover {
+            box-shadow: 0 10px 22px rgba(34, 197, 94, 0.28);
+        }
+
+        .back-btn {
+            background: rgba(51, 65, 85, 0.95);
+        }
+
+        .back-btn:hover {
+            background: #475569;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-bottom: 34px;
+        }
+
+        .summary-card {
+            background: rgba(30, 41, 59, 0.88);
+            padding: 20px 14px;
+            border-radius: 18px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-left: 5px solid #38bdf8;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+        }
+
+        .summary-card h3 {
+            margin: 0;
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .summary-card p {
+            margin: 12px 0 0;
+            font-size: 27px;
+            font-weight: bold;
+            color: #f8fafc;
+        }
+
+        .section {
+            margin-top: 38px;
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 16px;
+            padding: 14px 17px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.78), rgba(14, 165, 233, 0.58));
+            border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        .section-title h2 {
+            margin: 0;
+            font-size: 21px;
+            color: #f8fafc;
+        }
+
+        .section-title span {
+            font-size: 12px;
+            color: #dbeafe;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+        }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            min-width: 850px;
+            background: rgba(15, 23, 42, 0.72);
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.98);
+            color: #38bdf8;
+            padding: 14px 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+            white-space: nowrap;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px;
+            color: #e5e7eb;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            vertical-align: middle;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        tr:hover {
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .low-stock,
+        .available,
+        .movement-in,
+        .movement-out {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .low-stock {
+            color: #fecaca;
+            background: rgba(220, 38, 38, 0.2);
+            border: 1px solid rgba(248, 113, 113, 0.45);
+        }
+
+        .available {
+            color: #bbf7d0;
+            background: rgba(22, 163, 74, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.45);
+        }
+
+        .movement-in {
+            color: #bbf7d0;
+            background: rgba(22, 163, 74, 0.18);
+            border: 1px solid rgba(34, 197, 94, 0.38);
+        }
+
+        .movement-out {
+            color: #fecaca;
+            background: rgba(220, 38, 38, 0.18);
+            border: 1px solid rgba(248, 113, 113, 0.38);
+        }
+
+        .empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            border: 1px dashed rgba(255, 255, 255, 0.16);
+        }
+
+        .signature-area {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+            margin-top: 46px;
+            padding-top: 28px;
+        }
+
+        .signature-box {
+            text-align: center;
+            color: #cbd5e1;
+            font-size: 13px;
+        }
+
+        .signature-line {
+            border-top: 1px solid rgba(255, 255, 255, 0.45);
+            padding-top: 10px;
+        }
+
+        .footer {
+            margin-top: 34px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.14);
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 12mm;
+            }
+
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0;
+                margin: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .report-container {
+                max-width: none;
+                width: 100%;
+                padding: 0;
+                border-radius: 0;
+                background: white !important;
+                color: black !important;
+                box-shadow: none;
+                border: none;
+                backdrop-filter: none;
+            }
+
+            .btn-area {
+                display: none;
+            }
+
+            .top-bar {
+                border-bottom: 2px solid #111;
+                margin-bottom: 16px;
+                padding-bottom: 14px;
+            }
+
+            .brand-block h1 {
+                color: black !important;
+                font-size: 28px;
+            }
+
+            .brand-block p,
+            .report-meta,
+            .report-meta p,
+            .summary-card h3,
+            .summary-card p,
+            td,
+            .footer,
+            .signature-box {
+                color: black !important;
+            }
+
+            .report-badge {
+                color: black !important;
+                background: white !important;
+                border: 1px solid #111;
+            }
+
+            .report-meta {
+                background: white !important;
+                border: 1px solid #999;
+            }
+
+            .summary {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 8px;
+                margin-bottom: 18px;
+            }
+
+            .summary-card {
+                background: white !important;
+                border: 1px solid #999;
+                border-left: 4px solid #111;
+                box-shadow: none;
+                padding: 12px 8px;
+            }
+
+            .summary-card h3 {
+                font-size: 10px;
+            }
+
+            .summary-card p {
+                font-size: 19px;
+                margin-top: 6px;
+            }
+
+            .section {
+                margin-top: 20px;
+                page-break-inside: avoid;
+            }
+
+            .section-title {
+                background: #e5e7eb !important;
+                color: black !important;
+                border: 1px solid #999;
+                padding: 9px 11px;
+                margin-bottom: 8px;
+            }
+
+            .section-title h2,
+            .section-title span {
+                color: black !important;
+            }
+
+            .section-title h2 {
+                font-size: 16px;
+            }
+
+            .table-wrap {
+                overflow: visible;
+                border: none;
+                border-radius: 0;
+            }
+
+            table {
+                min-width: 0;
+                background: white !important;
+                font-size: 10.5px;
+            }
+
+            th {
+                background: #f1f5f9 !important;
+                color: black !important;
+                border: 1px solid #999;
+                padding: 7px;
+                font-size: 9.5px;
+            }
+
+            td {
+                border: 1px solid #999;
+                padding: 6px;
+            }
+
+            tr:nth-child(even) {
+                background: #f8fafc !important;
+            }
+
+            tr:hover {
+                background: transparent;
+            }
+
+            .low-stock,
+            .available,
+            .movement-in,
+            .movement-out {
+                color: black !important;
+                background: transparent !important;
+                border: none !important;
+                padding: 0;
+                font-size: 10.5px;
+            }
+
+            .empty {
+                color: black !important;
+                background: white !important;
+                border: 1px solid #aaa;
+            }
+
+            .signature-area {
+                margin-top: 26px;
+                padding-top: 18px;
+                gap: 22px;
+            }
+
+            .signature-line {
+                border-top: 1px solid #111;
+            }
+
+            .footer {
+                margin-top: 22px;
+                border-top: 1px solid #999;
+            }
+
+            table {
+                page-break-inside: auto;
+            }
+
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+        }
+
+        @media (max-width: 950px) {
+            .summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .top-bar {
+                flex-direction: column;
+            }
+
+            .report-meta {
+                text-align: left;
+                width: 100%;
+            }
+
+            .signature-area {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 14px;
+            }
+
+            .report-container {
+                padding: 20px;
+            }
+
+            .brand-block h1 {
+                font-size: 27px;
+            }
+
+            .summary {
+                grid-template-columns: 1fr;
+            }
+
+            .section-title {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .footer {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="report-container">
+
+        <div class="top-bar">
+            <div class="brand-block">
+                <h1>Inventory Management Report</h1>
+                <p>
+                    Advanced Programming Project<br>
+                    Product, supplier, stock, and movement summary
+                </p>
+                <span class="report-badge">Official Printable Report</span>
+            </div>
+
+            <div class="report-meta">
+                <p><strong>Generated By:</strong> Admin</p>
+                <p><strong>System:</strong> Inventory Management</p>
+                <p><strong>Report Type:</strong> Full Inventory Summary</p>
+                <p><strong>Date:</strong> <span id="printDate"></span></p>
+            </div>
+        </div>
+
+        <div class="btn-area">
+            <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+            <a href="/reports" class="back-btn">Back to Reports</a>
+            <a href="/dashboard" class="back-btn">Dashboard</a>
+        </div>
+
+        <div class="summary">
+            <div class="summary-card">
+                <h3>Total Products</h3>
+                <p>{{ total_products }}</p>
+            </div>
+
+            <div class="summary-card">
+                <h3>Total Stock</h3>
+                <p>{{ total_stock }}</p>
+            </div>
+
+            <div class="summary-card">
+                <h3>Low Stock</h3>
+                <p>{{ low_stock }}</p>
+            </div>
+
+            <div class="summary-card">
+                <h3>Total Suppliers</h3>
+                <p>{{ total_suppliers }}</p>
+            </div>
+
+            <div class="summary-card">
+                <h3>Stock Value</h3>
+                <p>৳{{ "%.2f"|format(total_stock_value) }}</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">
+                <h2>Product Report</h2>
+                <span>Product inventory details</span>
+            </div>
+
+            {% if products %}
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>SKU</th>
+                                <th>Category</th>
+                                <th>Supplier</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Total Value</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for product in products %}
+                                <tr>
+                                    <td>{{ product.id }}</td>
+                                    <td>{{ product.name }}</td>
+                                    <td>{{ product.sku }}</td>
+
+                                    <td>
+                                        {% if product.category %}
+                                            {{ product.category }}
+                                        {% else %}
+                                            Others
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if product.supplier_name %}
+                                            {{ product.supplier_name }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+
+                                    <td>{{ product.quantity }}</td>
+                                    <td>৳{{ "%.2f"|format(product.price) }}</td>
+                                    <td>৳{{ "%.2f"|format(product.price * product.quantity) }}</td>
+
+                                    <td>
+                                        {% if product.quantity <= 5 %}
+                                            <span class="low-stock">Low Stock</span>
+                                        {% else %}
+                                            <span class="available">Available</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="empty">No product data found.</p>
+            {% endif %}
+        </div>
+
+        <div class="section">
+            <div class="section-title">
+                <h2>Supplier Report</h2>
+                <span>Supplier contact details</span>
+            </div>
+
+            {% if suppliers %}
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Supplier Name</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Address</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for supplier in suppliers %}
+                                <tr>
+                                    <td>{{ supplier.id }}</td>
+                                    <td>{{ supplier.name }}</td>
+
+                                    <td>
+                                        {% if supplier.phone %}
+                                            {{ supplier.phone }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if supplier.email %}
+                                            {{ supplier.email }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if supplier.address %}
+                                            {{ supplier.address }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="empty">No supplier data found.</p>
+            {% endif %}
+        </div>
+
+        <div class="section">
+            <div class="section-title">
+                <h2>Stock Movement Report</h2>
+                <span>Stock in and stock out history</span>
+            </div>
+
+            {% if stock_history %}
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>SKU</th>
+                                <th>Product</th>
+                                <th>Movement Type</th>
+                                <th>Quantity</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for item in stock_history %}
+                                <tr>
+                                    <td>{{ item.id }}</td>
+
+                                    <td>
+                                        {% if item.date %}
+                                            {{ item.date }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if item.sku %}
+                                            {{ item.sku }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if item.product_name %}
+                                            {{ item.product_name }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if item.movement_type == "Stock In" %}
+                                            <span class="movement-in">{{ item.movement_type }}</span>
+                                        {% elif item.movement_type == "Stock Out" %}
+                                            <span class="movement-out">{{ item.movement_type }}</span>
+                                        {% else %}
+                                            {{ item.movement_type }}
+                                        {% endif %}
+                                    </td>
+
+                                    <td>{{ item.quantity }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="empty">No stock movement history found.</p>
+            {% endif %}
+        </div>
+
+        <div class="signature-area">
+            <div class="signature-box">
+                <div class="signature-line">Prepared By</div>
+            </div>
+
+            <div class="signature-box">
+                <div class="signature-line">Checked By</div>
+            </div>
+
+            <div class="signature-box">
+                <div class="signature-line">Approved By</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div>Inventory Management System | Generated Report</div>
+            <div>© Advanced Programming Project</div>
+        </div>
+
+    </div>
+
+    <script>
+        const printDate = document.getElementById("printDate");
+        const now = new Date();
+
+        printDate.textContent =
+            now.toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric"
+            }) +
+            " | " +
+            now.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Product - Inventory Management</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-image:
+                linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)),
+                url("{{ url_for('static', filename='bg1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            transition: background-image 1.2s ease-in-out;
+            color: white;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.14), transparent 35%);
+            z-index: -1;
+        }
+
+        .navbar {
+            background: rgba(2, 6, 23, 0.78);
+            color: white;
+            padding: 14px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 0.4px;
+        }
+
+        .navbar-links {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 10px;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 13px;
+            transition: 0.25s;
+        }
+
+        .navbar a:hover,
+        .navbar a.active {
+            color: #38bdf8;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .container {
+            padding: 38px 32px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .flash-area {
+            margin-bottom: 18px;
+        }
+
+        .flash {
+            padding: 13px 16px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            animation: messageFade 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .flash.success {
+            background: rgba(34, 197, 94, 0.18);
+            color: #bbf7d0;
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            border-left: 5px solid #22c55e;
+        }
+
+        .flash.error {
+            background: rgba(239, 68, 68, 0.20);
+            color: #fecaca;
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            border-left: 5px solid #ef4444;
+        }
+
+        .flash.warning {
+            background: rgba(245, 158, 11, 0.18);
+            color: #fde68a;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            border-left: 5px solid #f59e0b;
+        }
+
+        @keyframes messageFade {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 22px;
+            margin-bottom: 24px;
+        }
+
+        .hero-title h1 {
+            margin: 0;
+            font-size: 38px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+        }
+
+        .hero-title p {
+            margin: 9px 0 0;
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.84);
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+            line-height: 1.6;
+            max-width: 650px;
+        }
+
+        .product-mini-card {
+            min-width: 255px;
+            background: rgba(15, 23, 42, 0.54);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+            padding: 16px 18px;
+            border-radius: 18px;
+            border-top: 4px solid #38bdf8;
+        }
+
+        .product-mini-card h3 {
+            margin: 0 0 7px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: rgba(255, 255, 255, 0.68);
+        }
+
+        .product-mini-card p {
+            margin: 0;
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .product-mini-card span {
+            display: block;
+            margin-top: 6px;
+            color: #bae6fd;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .form-wrapper {
+            display: flex;
+            justify-content: center;
+        }
+
+        .form-card {
+            width: 660px;
+            background: rgba(15, 23, 42, 0.54);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(11px);
+            -webkit-backdrop-filter: blur(11px);
+            box-shadow: 0 16px 38px rgba(0, 0, 0, 0.32);
+            padding: 28px;
+            border-radius: 20px;
+            border-top: 4px solid #38bdf8;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-card h3 {
+            margin: 0 0 20px;
+            text-align: center;
+            color: white;
+            font-size: 25px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            padding-bottom: 15px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full {
+            grid-column: span 2;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.84);
+            font-size: 13px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px 13px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+            font-size: 14px;
+            color: white;
+            background: rgba(255, 255, 255, 0.10);
+            outline: none;
+            transition: 0.25s;
+        }
+
+        select option {
+            color: #0f172a;
+            background: white;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.16);
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        button,
+        .back-btn {
+            width: 100%;
+            padding: 13px;
+            color: white;
+            border-radius: 999px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: center;
+            text-decoration: none;
+            transition: 0.25s;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26);
+        }
+
+        button {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.88), rgba(37, 99, 235, 0.88));
+        }
+
+        .back-btn {
+            background: rgba(100, 116, 139, 0.78);
+            display: block;
+        }
+
+        button:hover,
+        .back-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .note {
+            margin-top: 16px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(56, 189, 248, 0.12);
+            border-left: 5px solid #38bdf8;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 12.5px;
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.75);
+            padding: 20px;
+            font-size: 13px;
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+        }
+
+        @media(max-width: 850px) {
+            .navbar {
+                flex-direction: column;
+                gap: 12px;
+                padding: 15px;
+            }
+
+            .navbar-links {
+                justify-content: center;
+            }
+
+            .container {
+                padding: 24px 16px;
+            }
+
+            .hero-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .hero-title h1 {
+                font-size: 30px;
+            }
+
+            .product-mini-card {
+                width: 100%;
+            }
+
+            .form-card {
+                width: 100%;
+                padding: 24px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-group.full {
+                grid-column: span 1;
+            }
+
+            .button-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="navbar">
+        <h2>Inventory Management</h2>
+
+        <div class="navbar-links">
+            <a href="/dashboard">Dashboard</a>
+            <a class="active" href="/products">Products</a>
+            <a href="/low-stock">Low Stock</a>
+            <a href="/stock-history">Stock History</a>
+            <a href="/reports">Reports</a>
+            <a href="/export-products">Export CSV</a>
+            <a href="/suppliers">Suppliers</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-area">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="hero-row">
+            <div class="hero-title">
+                <h1>Edit Product</h1>
+                <p>Update product information, category, price, quantity, and supplier connection.</p>
+            </div>
+
+            <div class="product-mini-card">
+                <h3>Current Product</h3>
+                <p>{{ product['name'] }}</p>
+                <span>SKU: {{ product['sku'] }}</span>
+            </div>
+        </div>
+
+        <div class="form-wrapper">
+            <div class="form-card">
+                <h3>Product Details</h3>
+
+                <form action="/update/{{ product['id'] }}" method="POST">
+
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Product Name</label>
+                            <input
+                                type="text"
+                                name="name"
+                                value="{{ product['name'] }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label>SKU</label>
+                            <input
+                                type="text"
+                                name="sku"
+                                value="{{ product['sku'] }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select name="category" required>
+                                <option value="Others" {% if product["category"] == "Others" or not product["category"] %}selected{% endif %}>
+                                    Others
+                                </option>
+
+                                <option value="Electronics" {% if product["category"] == "Electronics" %}selected{% endif %}>
+                                    Electronics
+                                </option>
+
+                                <option value="Grocery" {% if product["category"] == "Grocery" %}selected{% endif %}>
+                                    Grocery
+                                </option>
+
+                                <option value="Stationery" {% if product["category"] == "Stationery" %}selected{% endif %}>
+                                    Stationery
+                                </option>
+
+                                <option value="Medicine" {% if product["category"] == "Medicine" %}selected{% endif %}>
+                                    Medicine
+                                </option>
+
+                                <option value="Clothing" {% if product["category"] == "Clothing" %}selected{% endif %}>
+                                    Clothing
+                                </option>
+
+                                <option value="Cosmetics" {% if product["category"] == "Cosmetics" %}selected{% endif %}>
+                                    Cosmetics
+                                </option>
+
+                                <option value="Food" {% if product["category"] == "Food" %}selected{% endif %}>
+                                    Food
+                                </option>
+
+                                <option value="Accessories" {% if product["category"] == "Accessories" %}selected{% endif %}>
+                                    Accessories
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input
+                                type="number"
+                                name="quantity"
+                                value="{{ product['quantity'] }}"
+                                min="0"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label>Price</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="price"
+                                value="{{ product['price'] }}"
+                                min="0"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group full">
+                            <label>Supplier</label>
+                            <select name="supplier_id">
+                                <option value="">No Supplier</option>
+
+                                {% for supplier in suppliers %}
+                                    <option
+                                        value="{{ supplier['id'] }}"
+                                        {% if product["supplier_id"] == supplier["id"] %}selected{% endif %}
+                                    >
+                                        {{ supplier["name"] }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="button-row">
+                        <button type="submit">Update Product</button>
+                        <a class="back-btn" href="/products">Back to Products</a>
+                    </div>
+
+                    <div class="note">
+                        Changing quantity here directly updates product stock. For proper stock movement tracking, use Stock In or Stock Out from the Products page.
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Inventory Management System | Product Update
+    </div>
+
+    <script>
+        const backgrounds = [
+            "{{ url_for('static', filename='bg1.jpg') }}",
+            "{{ url_for('static', filename='bg2.jpg') }}",
+            "{{ url_for('static', filename='bg3.jpg') }}",
+            "{{ url_for('static', filename='bg4.jpg') }}",
+            "{{ url_for('static', filename='bg5.jpg') }}",
+            "{{ url_for('static', filename='bg6.jpg') }}"
+        ];
+
+        let currentBg = 0;
+
+        function changeBackground() {
+            currentBg = (currentBg + 1) % backgrounds.length;
+
+            document.body.style.backgroundImage =
+                `linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)), url('${backgrounds[currentBg]}')`;
+        }
+
+        setInterval(changeBackground, 5000);
+    </script>
+
+</body>
+</html>

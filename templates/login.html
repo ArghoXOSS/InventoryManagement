@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Inventory Management</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-image:
+                linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)),
+                url("{{ url_for('static', filename='bg1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            transition: background-image 1.2s ease-in-out;
+            color: white;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at top left, rgba(56, 189, 248, 0.20), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.15), transparent 35%);
+            z-index: -1;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .login-card {
+            background: rgba(15, 23, 42, 0.56);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.36);
+            border-radius: 22px;
+            padding: 36px 31px;
+            animation: fadeIn 0.45s ease-in-out;
+            border-top: 4px solid #38bdf8;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .brand {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 32px;
+            letter-spacing: 0.4px;
+            text-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+        }
+
+        .brand p {
+            margin: 10px 0 0;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 14px;
+            line-height: 1.6;
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.70);
+        }
+
+        .flash-area {
+            margin-bottom: 18px;
+        }
+
+        .flash {
+            padding: 13px 14px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 14px;
+            line-height: 1.5;
+            animation: messageFade 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .flash.success {
+            background: rgba(34, 197, 94, 0.18);
+            color: #bbf7d0;
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            border-left: 5px solid #22c55e;
+        }
+
+        .flash.error {
+            background: rgba(239, 68, 68, 0.20);
+            color: #fecaca;
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            border-left: 5px solid #ef4444;
+        }
+
+        .flash.warning {
+            background: rgba(245, 158, 11, 0.18);
+            color: #fde68a;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            border-left: 5px solid #f59e0b;
+        }
+
+        .error-box {
+            background: rgba(239, 68, 68, 0.20);
+            border-left: 5px solid #ef4444;
+            color: #fecaca;
+            padding: 13px 14px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            font-weight: bold;
+            font-size: 14px;
+            line-height: 1.5;
+            border-top: 1px solid rgba(255, 255, 255, 0.10);
+            border-right: 1px solid rgba(255, 255, 255, 0.10);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        @keyframes messageFade {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            margin-top: 14px;
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.10);
+            color: white;
+            transition: 0.25s;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.58);
+        }
+
+        input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .password-box {
+            position: relative;
+        }
+
+        .password-box input {
+            padding-right: 76px;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.12);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: 0.25s;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .login-btn {
+            width: 100%;
+            margin-top: 24px;
+            padding: 13px;
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.90), rgba(37, 99, 235, 0.90));
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26);
+            transition: 0.25s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .signup-link {
+            text-align: center;
+            margin-top: 19px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.78);
+        }
+
+        .signup-link a {
+            color: #7dd3fc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-text {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.62);
+        }
+
+        @media(max-width: 500px) {
+            .login-card {
+                padding: 29px 22px;
+            }
+
+            .brand h1 {
+                font-size: 28px;
+            }
+
+            .brand p {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-wrapper">
+        <div class="login-card">
+
+            <div class="brand">
+                <h1>Inventory Management</h1>
+                <p>Welcome back. Log in to manage products, stock, suppliers, and reports.</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-area">
+                        {% for category, message in messages %}
+                            <div class="flash {{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% if error %}
+                <div class="error-box">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form method="POST" action="/login">
+                <label>Username</label>
+                <input type="text" name="username" placeholder="Enter username" required>
+
+                <label>Password</label>
+                <div class="password-box">
+                    <input type="password" name="password" id="password" placeholder="Enter password" required>
+                    <button type="button" class="toggle-btn" onclick="togglePassword()">Show</button>
+                </div>
+
+                <button class="login-btn" type="submit">Login</button>
+            </form>
+
+            <div class="signup-link">
+                Don’t have an account?
+                <a href="/signup">Create one</a>
+            </div>
+
+            <div class="footer-text">
+                Secure Inventory Access
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const backgrounds = [
+            "{{ url_for('static', filename='bg1.jpg') }}",
+            "{{ url_for('static', filename='bg2.jpg') }}",
+            "{{ url_for('static', filename='bg3.jpg') }}",
+            "{{ url_for('static', filename='bg4.jpg') }}",
+            "{{ url_for('static', filename='bg5.jpg') }}",
+            "{{ url_for('static', filename='bg6.jpg') }}"
+        ];
+
+        let currentBg = 0;
+
+        function changeBackground() {
+            currentBg = (currentBg + 1) % backgrounds.length;
+
+            document.body.style.backgroundImage =
+                `linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)), url('${backgrounds[currentBg]}')`;
+        }
+
+        setInterval(changeBackground, 5000);
+
+        function togglePassword() {
+            const passwordInput = document.getElementById("password");
+            const toggleButton = document.querySelector(".toggle-btn");
+
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                toggleButton.textContent = "Hide";
+            } else {
+                passwordInput.type = "password";
+                toggleButton.textContent = "Show";
+            }
+        }
+    </script>
+
+</body>
+</html>

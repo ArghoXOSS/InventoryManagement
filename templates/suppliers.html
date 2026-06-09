@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Suppliers - Inventory Management</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-image:
+                linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)),
+                url("{{ url_for('static', filename='bg1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            transition: background-image 1.2s ease-in-out;
+            color: white;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.14), transparent 35%);
+            z-index: -1;
+        }
+
+        .navbar {
+            background: rgba(2, 6, 23, 0.78);
+            color: white;
+            padding: 14px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 0.4px;
+        }
+
+        .navbar-links {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 10px;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 13px;
+            transition: 0.25s;
+        }
+
+        .navbar a:hover,
+        .navbar a.active {
+            color: #38bdf8;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .container {
+            padding: 38px 32px;
+            max-width: 1400px;
+            margin: auto;
+        }
+
+        .flash-area {
+            margin-bottom: 18px;
+        }
+
+        .flash {
+            padding: 13px 16px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            animation: messageFade 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .flash.success {
+            background: rgba(34, 197, 94, 0.18);
+            color: #bbf7d0;
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            border-left: 5px solid #22c55e;
+        }
+
+        .flash.error {
+            background: rgba(239, 68, 68, 0.20);
+            color: #fecaca;
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            border-left: 5px solid #ef4444;
+        }
+
+        .flash.warning {
+            background: rgba(245, 158, 11, 0.18);
+            color: #fde68a;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            border-left: 5px solid #f59e0b;
+        }
+
+        @keyframes messageFade {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+            margin-bottom: 22px;
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 38px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+        }
+
+        .page-header p {
+            margin: 9px 0 0;
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.84);
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+            max-width: 720px;
+            line-height: 1.6;
+        }
+
+        .header-badge {
+            padding: 10px 15px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: #cbd5e1;
+            font-size: 13px;
+            font-weight: bold;
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+        }
+
+        .section {
+            background: rgba(15, 23, 42, 0.50);
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+            padding: 20px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section h2 {
+            margin: 0;
+            color: white;
+            font-size: 21px;
+        }
+
+        .section-note {
+            color: rgba(255, 255, 255, 0.62);
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+        }
+
+        input {
+            padding: 13px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.10);
+            color: white;
+            transition: 0.25s;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.58);
+        }
+
+        input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        button {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.88), rgba(22, 163, 74, 0.88));
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            padding: 13px 15px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26);
+            transition: 0.25s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: white;
+            min-width: 880px;
+            background: rgba(15, 23, 42, 0.35);
+        }
+
+        th,
+        td {
+            padding: 13px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+            text-align: left;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e0f2fe;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            font-size: 11.5px;
+            white-space: nowrap;
+        }
+
+        tr:hover {
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .supplier-name {
+            font-weight: bold;
+            color: #f8fafc;
+        }
+
+        .muted {
+            color: rgba(255, 255, 255, 0.58);
+        }
+
+        .actions {
+            white-space: nowrap;
+        }
+
+        .btn {
+            padding: 7px 11px;
+            text-decoration: none;
+            color: white;
+            border-radius: 999px;
+            margin: 2px;
+            display: inline-block;
+            font-size: 12px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            transition: 0.25s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.1);
+        }
+
+        .edit {
+            background: rgba(245, 158, 11, 0.78);
+        }
+
+        .delete {
+            background: rgba(239, 68, 68, 0.78);
+        }
+
+        .empty {
+            color: rgba(255, 255, 255, 0.72);
+            text-align: center;
+            padding: 24px;
+            font-weight: bold;
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.75);
+            padding: 20px;
+            font-size: 13px;
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+        }
+
+        @media screen and (max-width: 1150px) {
+            form {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            button {
+                grid-column: span 2;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @media screen and (max-width: 740px) {
+            .navbar {
+                flex-direction: column;
+                gap: 12px;
+                padding: 15px;
+            }
+
+            .navbar-links {
+                justify-content: center;
+            }
+
+            .container {
+                padding: 24px 16px;
+            }
+
+            .page-header h1 {
+                font-size: 29px;
+            }
+
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            form {
+                grid-template-columns: 1fr;
+            }
+
+            button {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="navbar">
+        <h2>Inventory Management</h2>
+
+        <div class="navbar-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/products">Products</a>
+            <a href="/low-stock">Low Stock</a>
+            <a href="/stock-history">Stock History</a>
+            <a href="/reports">Reports</a>
+            <a href="/export-products">Export CSV</a>
+            <a class="active" href="/suppliers">Suppliers</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-area">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="page-header">
+            <div>
+                <h1>Supplier Management</h1>
+                <p>
+                    Add, update, and manage supplier records connected with your
+                    products and inventory reports.
+                </p>
+            </div>
+
+            <div class="header-badge">
+                Supplier Database
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>Add Supplier</h2>
+                <span class="section-note">Create a new supplier record</span>
+            </div>
+
+            <form method="POST" action="/add-supplier">
+                <input type="text" name="name" placeholder="Supplier Name" required>
+                <input type="text" name="phone" placeholder="Phone Number">
+                <input type="email" name="email" placeholder="Email Address">
+                <input type="text" name="address" placeholder="Address">
+                <button type="submit">Add Supplier</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>Supplier List</h2>
+                <span class="section-note">All saved suppliers</span>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Supplier Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Address</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% if suppliers %}
+                            {% for supplier in suppliers %}
+                                <tr>
+                                    <td>{{ supplier.id }}</td>
+
+                                    <td>
+                                        <span class="supplier-name">{{ supplier.name }}</span>
+                                    </td>
+
+                                    <td>
+                                        {% if supplier.phone %}
+                                            {{ supplier.phone }}
+                                        {% else %}
+                                            <span class="muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if supplier.email %}
+                                            {{ supplier.email }}
+                                        {% else %}
+                                            <span class="muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if supplier.address %}
+                                            {{ supplier.address }}
+                                        {% else %}
+                                            <span class="muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td class="actions">
+                                        <a class="btn edit" href="/edit-supplier/{{ supplier.id }}">Edit</a>
+                                        <a class="btn delete"
+                                           href="/delete-supplier/{{ supplier.id }}"
+                                           onclick="return confirm('Are you sure you want to delete this supplier?')">
+                                            Delete
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="empty">No suppliers found.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Inventory Management System | Supplier Records
+    </div>
+
+    <script>
+        const backgrounds = [
+            "{{ url_for('static', filename='bg1.jpg') }}",
+            "{{ url_for('static', filename='bg2.jpg') }}",
+            "{{ url_for('static', filename='bg3.jpg') }}",
+            "{{ url_for('static', filename='bg4.jpg') }}",
+            "{{ url_for('static', filename='bg5.jpg') }}",
+            "{{ url_for('static', filename='bg6.jpg') }}"
+        ];
+
+        let currentBg = 0;
+
+        function changeBackground() {
+            currentBg = (currentBg + 1) % backgrounds.length;
+
+            document.body.style.backgroundImage =
+                `linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)), url('${backgrounds[currentBg]}')`;
+        }
+
+        setInterval(changeBackground, 5000);
+    </script>
+
+</body>
+</html>

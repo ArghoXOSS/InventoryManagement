@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Low Stock - Inventory Management</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-image:
+                linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)),
+                url("{{ url_for('static', filename='bg1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            transition: background-image 1.2s ease-in-out;
+            color: white;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at top left, rgba(239, 68, 68, 0.18), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.14), transparent 35%);
+            z-index: -1;
+        }
+
+        .navbar {
+            background: rgba(2, 6, 23, 0.78);
+            color: white;
+            padding: 14px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 0.4px;
+        }
+
+        .navbar-links {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 10px;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 13px;
+            transition: 0.25s;
+        }
+
+        .navbar a:hover,
+        .navbar a.active {
+            color: #38bdf8;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .container {
+            padding: 38px 32px;
+            max-width: 1400px;
+            margin: auto;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+            margin-bottom: 22px;
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 38px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+        }
+
+        .page-header p {
+            margin: 9px 0 0;
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.84);
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+            line-height: 1.6;
+            max-width: 720px;
+        }
+
+        .header-badge {
+            padding: 10px 15px;
+            border-radius: 999px;
+            background: rgba(239, 68, 68, 0.18);
+            border: 1px solid rgba(248, 113, 113, 0.28);
+            color: #fecaca;
+            font-size: 13px;
+            font-weight: bold;
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 22px;
+        }
+
+        .card {
+            position: relative;
+            overflow: hidden;
+            background: rgba(15, 23, 42, 0.52);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+            padding: 18px;
+            border-radius: 18px;
+            border-top: 4px solid #ef4444;
+            transition: 0.25s;
+            min-height: 118px;
+        }
+
+        .card::after {
+            content: "";
+            position: absolute;
+            right: -30px;
+            top: -30px;
+            width: 95px;
+            height: 95px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.13);
+        }
+
+        .card:hover {
+            background: rgba(15, 23, 42, 0.68);
+            transform: translateY(-3px);
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
+        }
+
+        .card h3 {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card p {
+            font-size: 30px;
+            font-weight: bold;
+            margin: 12px 0 0;
+            color: #fca5a5;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card span {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.62);
+            position: relative;
+            z-index: 1;
+        }
+
+        .card.value {
+            border-top-color: #f59e0b;
+        }
+
+        .card.value::after {
+            background: rgba(245, 158, 11, 0.13);
+        }
+
+        .card.value p {
+            color: #fed7aa;
+        }
+
+        .section {
+            background: rgba(15, 23, 42, 0.50);
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+            padding: 20px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section h3 {
+            margin: 0;
+            color: white;
+            font-size: 21px;
+        }
+
+        .section-note {
+            color: rgba(255, 255, 255, 0.62);
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .alert-box {
+            background: rgba(239, 68, 68, 0.18);
+            border-left: 5px solid #ef4444;
+            padding: 15px;
+            border-radius: 12px;
+            color: #fecaca;
+            margin-bottom: 18px;
+            font-weight: bold;
+            border-top: 1px solid rgba(255, 255, 255, 0.10);
+            border-right: 1px solid rgba(255, 255, 255, 0.10);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+            line-height: 1.6;
+        }
+
+        .success-box {
+            background: rgba(34, 197, 94, 0.18);
+            border-left: 5px solid #22c55e;
+            padding: 16px;
+            border-radius: 12px;
+            color: #bbf7d0;
+            font-weight: bold;
+            border-top: 1px solid rgba(255, 255, 255, 0.10);
+            border-right: 1px solid rgba(255, 255, 255, 0.10);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+            line-height: 1.6;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: white;
+            min-width: 850px;
+            background: rgba(15, 23, 42, 0.35);
+        }
+
+        th,
+        td {
+            padding: 13px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+            text-align: left;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e0f2fe;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            font-size: 11.5px;
+            white-space: nowrap;
+        }
+
+        tr:hover {
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .product-name {
+            font-weight: bold;
+            color: #f8fafc;
+        }
+
+        .sku-text {
+            font-weight: bold;
+            color: #bae6fd;
+        }
+
+        .quantity-danger {
+            font-weight: bold;
+            color: #fca5a5;
+        }
+
+        .price-text {
+            font-weight: bold;
+            color: #fed7aa;
+            white-space: nowrap;
+        }
+
+        .badge-low {
+            padding: 5px 9px;
+            border-radius: 20px;
+            background: rgba(239, 68, 68, 0.24);
+            color: #fecaca;
+            border: 1px solid rgba(239, 68, 68, 0.30);
+            font-size: 11.5px;
+            font-weight: bold;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .action-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        .edit-btn,
+        .stock-in-btn,
+        .products-btn,
+        .dashboard-btn {
+            padding: 8px 12px;
+            color: white;
+            text-decoration: none;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 12px;
+            display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            transition: 0.25s;
+            white-space: nowrap;
+        }
+
+        .edit-btn:hover,
+        .stock-in-btn:hover,
+        .products-btn:hover,
+        .dashboard-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .edit-btn {
+            background: rgba(14, 165, 233, 0.84);
+        }
+
+        .stock-in-btn {
+            background: rgba(34, 197, 94, 0.84);
+        }
+
+        .products-btn {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.84), rgba(37, 99, 235, 0.84));
+        }
+
+        .dashboard-btn {
+            background: rgba(100, 116, 139, 0.78);
+        }
+
+        .bottom-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.75);
+            padding: 20px;
+            font-size: 13px;
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+        }
+
+        @media(max-width: 900px) {
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @media(max-width: 700px) {
+            .navbar {
+                flex-direction: column;
+                gap: 12px;
+                padding: 15px;
+            }
+
+            .navbar-links {
+                justify-content: center;
+            }
+
+            .container {
+                padding: 24px 16px;
+            }
+
+            .page-header h1 {
+                font-size: 29px;
+            }
+
+            .bottom-actions {
+                flex-direction: column;
+            }
+
+            .bottom-actions a {
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="navbar">
+        <h2>Inventory Management</h2>
+
+        <div class="navbar-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/products">Products</a>
+            <a class="active" href="/low-stock">Low Stock</a>
+            <a href="/stock-history">Stock History</a>
+            <a href="/reports">Reports</a>
+            <a href="/export-products">Export CSV</a>
+            <a href="/suppliers">Suppliers</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <div class="page-header">
+            <div>
+                <h1>Low Stock Alert</h1>
+                <p>Products with quantity 5 or less are listed here so you can restock them quickly.</p>
+            </div>
+
+            <div class="header-badge">
+                Restock Required
+            </div>
+        </div>
+
+        <div class="cards">
+            <div class="card">
+                <h3>Total Low Stock Products</h3>
+                <p>{{ total_low_stock }}</p>
+                <span>Products that need restocking</span>
+            </div>
+
+            <div class="card value">
+                <h3>Low Stock Value</h3>
+                <p>৳{{ "%.2f"|format(total_low_stock_value) }}</p>
+                <span>Total value of low stock products</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h3>Low Stock Products</h3>
+                <span class="section-note">Quantity 5 or less</span>
+            </div>
+
+            {% if low_stock_items %}
+                <div class="alert-box">
+                    These products have quantity 5 or less. Restock them soon to avoid shortage.
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>SKU</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for product in low_stock_items %}
+                                <tr>
+                                    <td>{{ product["id"] }}</td>
+
+                                    <td>
+                                        <span class="product-name">{{ product["name"] }}</span>
+                                    </td>
+
+                                    <td>
+                                        <span class="sku-text">{{ product["sku"] }}</span>
+                                    </td>
+
+                                    <td>
+                                        <span class="quantity-danger">{{ product["quantity"] }}</span>
+                                    </td>
+
+                                    <td>
+                                        <span class="price-text">৳{{ "%.2f"|format(product["price"]) }}</span>
+                                    </td>
+
+                                    <td>
+                                        <span class="badge-low">Low Stock</span>
+                                    </td>
+
+                                    <td>
+                                        <div class="action-group">
+                                            <a class="stock-in-btn" href="/stock-in/{{ product['id'] }}">Stock In</a>
+                                            <a class="edit-btn" href="/edit/{{ product['id'] }}">Edit</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+            {% else %}
+                <div class="success-box">
+                    Good news! No products are currently low in stock.
+                </div>
+            {% endif %}
+
+            <div class="bottom-actions">
+                <a class="products-btn" href="/products">Back to Products</a>
+                <a class="dashboard-btn" href="/dashboard">Back to Dashboard</a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Inventory Management System | Low Stock Monitoring
+    </div>
+
+    <script>
+        const backgrounds = [
+            "{{ url_for('static', filename='bg1.jpg') }}",
+            "{{ url_for('static', filename='bg2.jpg') }}",
+            "{{ url_for('static', filename='bg3.jpg') }}",
+            "{{ url_for('static', filename='bg4.jpg') }}",
+            "{{ url_for('static', filename='bg5.jpg') }}",
+            "{{ url_for('static', filename='bg6.jpg') }}"
+        ];
+
+        let currentBg = 0;
+
+        function changeBackground() {
+            currentBg = (currentBg + 1) % backgrounds.length;
+
+            document.body.style.backgroundImage =
+                `linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)), url('${backgrounds[currentBg]}')`;
+        }
+
+        setInterval(changeBackground, 5000);
+    </script>
+
+</body>
+</html>

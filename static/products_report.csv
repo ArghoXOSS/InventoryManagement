@@ -1,0 +1,6 @@
+ID,Product Name,SKU,Category,Supplier,Quantity,Price,Total Value
+6,a5,s5,Food,Basundhara,11,700.0,7700.0
+4,a4,s4,Electronics,Adani Group,400,200.0,80000.0
+3,a3,s3,Grocery,N/A,10,34.0,340.0
+2,a2,s2,Others,N/A,31,70.0,2170.0
+1,a1,s1,Others,N/A,30,50.0,1500.0

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Out - Inventory Management</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-image:
+                linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)),
+                url("{{ url_for('static', filename='bg1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            transition: background-image 1.2s ease-in-out;
+            color: white;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at top left, rgba(245, 158, 11, 0.18), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.14), transparent 35%);
+            z-index: -1;
+        }
+
+        .navbar {
+            background: rgba(2, 6, 23, 0.78);
+            color: white;
+            padding: 14px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 0.4px;
+        }
+
+        .navbar-links {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 10px;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 13px;
+            transition: 0.25s;
+        }
+
+        .navbar a:hover,
+        .navbar a.active {
+            color: #38bdf8;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .container {
+            padding: 50px 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-card {
+            width: 560px;
+            background: rgba(15, 23, 42, 0.54);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(11px);
+            -webkit-backdrop-filter: blur(11px);
+            box-shadow: 0 16px 38px rgba(0, 0, 0, 0.32);
+            padding: 32px;
+            border-radius: 20px;
+            border-top: 4px solid #f59e0b;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .flash-area {
+            margin-bottom: 18px;
+        }
+
+        .flash {
+            padding: 13px 16px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            animation: messageFade 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .flash.success {
+            background: rgba(34, 197, 94, 0.18);
+            color: #bbf7d0;
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            border-left: 5px solid #22c55e;
+        }
+
+        .flash.error {
+            background: rgba(239, 68, 68, 0.20);
+            color: #fecaca;
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            border-left: 5px solid #ef4444;
+        }
+
+        .flash.warning {
+            background: rgba(245, 158, 11, 0.18);
+            color: #fde68a;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            border-left: 5px solid #f59e0b;
+        }
+
+        .error-box {
+            padding: 15px;
+            background: rgba(239, 68, 68, 0.20);
+            border-left: 5px solid #ef4444;
+            border-radius: 13px;
+            color: #fecaca;
+            margin-bottom: 20px;
+            font-weight: bold;
+            line-height: 1.6;
+            border-top: 1px solid rgba(255, 255, 255, 0.10);
+            border-right: 1px solid rgba(255, 255, 255, 0.10);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        @keyframes messageFade {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .form-header h3 {
+            margin: 0;
+            color: white;
+            font-size: 30px;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.55);
+        }
+
+        .form-header p {
+            margin: 8px 0 0;
+            color: rgba(255, 255, 255, 0.68);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .info-box {
+            padding: 16px;
+            background: rgba(245, 158, 11, 0.18);
+            border-left: 5px solid #f59e0b;
+            border-radius: 13px;
+            color: white;
+            margin-bottom: 20px;
+            line-height: 1.8;
+            border-top: 1px solid rgba(255, 255, 255, 0.10);
+            border-right: 1px solid rgba(255, 255, 255, 0.10);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        .info-box strong {
+            color: #fed7aa;
+        }
+
+        .sku {
+            color: #bae6fd;
+            font-weight: bold;
+        }
+
+        .quantity {
+            color: #f8fafc;
+            font-weight: bold;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.10);
+            color: white;
+            transition: 0.25s;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.55);
+        }
+
+        input:focus {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.20);
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .hint {
+            margin-top: 8px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.70);
+            line-height: 1.5;
+        }
+
+        .warning-hint {
+            margin-top: 12px;
+            padding: 12px 13px;
+            border-radius: 12px;
+            background: rgba(239, 68, 68, 0.12);
+            border-left: 5px solid #ef4444;
+            color: #fecaca;
+            font-size: 12.5px;
+            line-height: 1.5;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        button {
+            flex: 1;
+            padding: 13px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.88), rgba(217, 119, 6, 0.88));
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            transition: 0.25s;
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .cancel-btn {
+            flex: 1;
+            text-align: center;
+            padding: 13px;
+            background: rgba(100, 116, 139, 0.78);
+            color: white;
+            text-decoration: none;
+            border-radius: 999px;
+            font-weight: bold;
+            transition: 0.25s;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26);
+        }
+
+        .cancel-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.75);
+            padding: 20px;
+            font-size: 13px;
+            text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75);
+        }
+
+        @media(max-width: 740px) {
+            .navbar {
+                flex-direction: column;
+                gap: 12px;
+                padding: 15px;
+            }
+
+            .navbar-links {
+                justify-content: center;
+            }
+
+            .container {
+                padding: 32px 16px;
+            }
+
+            .form-card {
+                width: 100%;
+                padding: 25px;
+            }
+
+            .form-header h3 {
+                font-size: 27px;
+            }
+
+            .buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="navbar">
+        <h2>Inventory Management</h2>
+
+        <div class="navbar-links">
+            <a href="/dashboard">Dashboard</a>
+            <a class="active" href="/products">Products</a>
+            <a href="/low-stock">Low Stock</a>
+            <a href="/stock-history">Stock History</a>
+            <a href="/reports">Reports</a>
+            <a href="/export-products">Export CSV</a>
+            <a href="/suppliers">Suppliers</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="form-card">
+
+            <div class="form-header">
+                <h3>Stock Out</h3>
+                <p>Remove units from the selected product and update inventory quantity.</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-area">
+                        {% for category, message in messages %}
+                            <div class="flash {{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% if error %}
+                <div class="error-box">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <div class="info-box">
+                <strong>Product:</strong> {{ product["name"] }} <br>
+                <strong>SKU:</strong> <span class="sku">{{ product["sku"] }}</span> <br>
+                <strong>Current Quantity:</strong> <span class="quantity">{{ product["quantity"] }}</span>
+            </div>
+
+            <form action="/stock-out/{{ product['id'] }}" method="POST">
+                <label>Quantity to Remove</label>
+
+                <input
+                    type="number"
+                    name="amount"
+                    min="1"
+                    max="{{ product['quantity'] }}"
+                    placeholder="Enter quantity"
+                    required
+                >
+
+                <div class="hint">
+                    You cannot remove more than the current available quantity.
+                </div>
+
+                <div class="warning-hint">
+                    Stock Out will reduce this product’s quantity and create a stock movement record.
+                </div>
+
+                <div class="buttons">
+                    <button type="submit">Remove Stock</button>
+                    <a class="cancel-btn" href="/products">Cancel</a>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <div class="footer">
+        Inventory Management System | Stock Out
+    </div>
+
+    <script>
+        const backgrounds = [
+            "{{ url_for('static', filename='bg1.jpg') }}",
+            "{{ url_for('static', filename='bg2.jpg') }}",
+            "{{ url_for('static', filename='bg3.jpg') }}",
+            "{{ url_for('static', filename='bg4.jpg') }}",
+            "{{ url_for('static', filename='bg5.jpg') }}",
+            "{{ url_for('static', filename='bg6.jpg') }}"
+        ];
+
+        let currentBg = 0;
+
+        function changeBackground() {
+            currentBg = (currentBg + 1) % backgrounds.length;
+
+            document.body.style.backgroundImage =
+                `linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)), url('${backgrounds[currentBg]}')`;
+        }
+
+        setInterval(changeBackground, 5000);
+    </script>
+
+</body>
+</html>

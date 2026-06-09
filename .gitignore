@@ -1,0 +1,13 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+.env
+.env.*
+
+.DS_Store
+.vscode/
+*.log
+
+inventory_backup.db
