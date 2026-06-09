@@ -1046,6 +1046,53 @@ def delete_supplier_route(sid):
     return redirect("/suppliers")
 
 
+# ---------------- ADMIN USERS / DATABASE VIEWER ----------------
+@app.route("/admin/users")
+@login_required
+def admin_users():
+    current_username = session.get("user")
+
+    if current_username != "admin":
+        flash("Admin access only.", "error")
+        return redirect("/dashboard")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(convert_placeholders("""
+        SELECT 
+            users.id,
+            users.username,
+
+            COUNT(DISTINCT products.id) AS product_count,
+            COUNT(DISTINCT suppliers.id) AS supplier_count,
+            COUNT(DISTINCT stock_history.id) AS movement_count,
+
+            COALESCE(SUM(DISTINCT products.quantity), 0) AS total_stock,
+            COALESCE(SUM(DISTINCT products.quantity * products.price), 0) AS total_value
+
+        FROM users
+
+        LEFT JOIN products 
+            ON users.id = products.user_id
+
+        LEFT JOIN suppliers 
+            ON users.id = suppliers.user_id
+
+        LEFT JOIN stock_history 
+            ON users.id = stock_history.user_id
+
+        GROUP BY users.id, users.username
+        ORDER BY users.id ASC
+    """))
+
+    users_data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template("admin_users.html", users_data=users_data)
+
 # ---------------- ERROR PAGES ----------------
 @app.errorhandler(404)
 def page_not_found(error):
