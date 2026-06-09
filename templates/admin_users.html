@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Users - Inventory Management</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-image:
+                linear-gradient(rgba(2, 6, 23, 0.78), rgba(2, 6, 23, 0.88)),
+                url("{{ url_for('static', filename='bg1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: white;
+            padding: 25px;
+        }
+
+        .navbar {
+            max-width: 1250px;
+            margin: 0 auto 25px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 18px;
+            padding: 18px 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+            backdrop-filter: blur(14px);
+        }
+
+        .navbar h2 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 0.5px;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin-left: 15px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .navbar a:hover {
+            color: #38bdf8;
+        }
+
+        .container {
+            max-width: 1250px;
+            margin: auto;
+        }
+
+        .hero-card {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+            backdrop-filter: blur(14px);
+        }
+
+        .hero-card h1 {
+            margin: 0 0 10px 0;
+            font-size: 30px;
+        }
+
+        .hero-card p {
+            color: #cbd5e1;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .summary-card {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 18px 45px rgba(0,0,0,0.30);
+            backdrop-filter: blur(14px);
+        }
+
+        .summary-card h3 {
+            margin: 0 0 8px 0;
+            color: #94a3b8;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .summary-card p {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+            color: #38bdf8;
+        }
+
+        .table-card {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+            backdrop-filter: blur(14px);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+        }
+
+        th {
+            color: #38bdf8;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            background: rgba(30, 41, 59, 0.75);
+        }
+
+        td {
+            color: #f8fafc;
+        }
+
+        tr:hover {
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 7px 11px;
+            border-radius: 999px;
+            background: rgba(56, 189, 248, 0.15);
+            color: #7dd3fc;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .admin-badge {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86efac;
+            border-color: rgba(34, 197, 94, 0.28);
+        }
+
+        .money {
+            color: #86efac;
+            font-weight: bold;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 25px;
+            color: #cbd5e1;
+        }
+
+        .print-btn {
+            display: inline-block;
+            margin-top: 18px;
+            padding: 11px 16px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #38bdf8, #2563eb);
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+
+        .print-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        @media (max-width: 900px) {
+            .navbar {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
+            .navbar a {
+                display: inline-block;
+                margin: 6px;
+            }
+
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+                color: black;
+                padding: 10px;
+            }
+
+            .navbar a,
+            .print-btn {
+                display: none;
+            }
+
+            .navbar,
+            .hero-card,
+            .summary-card,
+            .table-card {
+                background: white;
+                color: black;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+
+            .hero-card p,
+            td {
+                color: black;
+            }
+
+            th {
+                background: #eee;
+                color: black;
+            }
+
+            .summary-card p,
+            .money,
+            .badge {
+                color: black;
+                background: white;
+                border: 1px solid #999;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>Admin Database Viewer</h2>
+        <div>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/products">Products</a>
+            <a href="/suppliers">Suppliers</a>
+            <a href="/reports">Reports</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <div class="hero-card">
+            <h1>Registered Users & Data Summary</h1>
+            <p>
+                This admin-only page shows user-wise stored database records. It proves that the system separates data
+                by account using user_id. Passwords are intentionally hidden for security.
+            </p>
+
+            <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Total Users</h3>
+                <p>{{ users_data|length }}</p>
+            </div>
+
+            <div class="summary-card">
+                <h3>Total Products</h3>
+                <p>{{ users_data|sum(attribute='product_count') }}</p>
+            </div>
+
+            <div class="summary-card">
+                <h3>Total Suppliers</h3>
+                <p>{{ users_data|sum(attribute='supplier_count') }}</p>
+            </div>
+
+            <div class="summary-card">
+                <h3>Total Movements</h3>
+                <p>{{ users_data|sum(attribute='movement_count') }}</p>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Products</th>
+                        <th>Suppliers</th>
+                        <th>Stock Movements</th>
+                        <th>Total Stock</th>
+                        <th>Total Inventory Value</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% if users_data %}
+                        {% for user in users_data %}
+                        <tr>
+                            <td>{{ user["id"] }}</td>
+
+                            <td>
+                                {% if user["username"] == "admin" %}
+                                    <span class="badge admin-badge">{{ user["username"] }} / Admin</span>
+                                {% else %}
+                                    <span class="badge">{{ user["username"] }}</span>
+                                {% endif %}
+                            </td>
+
+                            <td>{{ user["product_count"] or 0 }}</td>
+                            <td>{{ user["supplier_count"] or 0 }}</td>
+                            <td>{{ user["movement_count"] or 0 }}</td>
+                            <td>{{ user["total_stock"] or 0 }}</td>
+                            <td class="money">৳ {{ "%.2f"|format(user["total_value"] or 0) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="empty">No users found.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+</body>
+</html>

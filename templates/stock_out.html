@@ -363,6 +363,9 @@
             <a href="/reports">Reports</a>
             <a href="/export-products">Export CSV</a>
             <a href="/suppliers">Suppliers</a>
+            {% if session.get("user") == "admin" %}
+    <a href="/admin/users">Admin Panel</a>
+{% endif %}
             <a href="/logout">Logout</a>
         </div>
     </div>
