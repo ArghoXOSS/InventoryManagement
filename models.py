@@ -1,7 +1,6 @@
 import os
 import sqlite3
 from datetime import datetime
-from urllib.parse import urlparse
 
 import psycopg2
 import psycopg2.extras
@@ -44,12 +43,6 @@ def get_db_connection():
 
 # ---------------- SQL PLACEHOLDER HELPER ----------------
 def convert_placeholders(sql):
-    """
-    SQLite uses ?
-    PostgreSQL uses %s
-
-    We write SQL using ? and convert only when PostgreSQL is active.
-    """
     if is_postgres():
         return sql.replace("?", "%s")
     return sql
@@ -128,12 +121,6 @@ def hash_password(password):
 
 
 def verify_password(stored_password, entered_password):
-    """
-    Supports both:
-    1. New hashed passwords
-    2. Old plain-text passwords from earlier database
-    """
-
     if stored_password is None:
         return False
 
@@ -159,7 +146,6 @@ def init_db():
     cursor = conn.cursor()
 
     if is_postgres():
-        # Users table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -168,10 +154,10 @@ def init_db():
             )
         """)
 
-        # Suppliers table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS suppliers (
                 id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 name TEXT NOT NULL,
                 phone TEXT,
                 email TEXT,
@@ -179,12 +165,12 @@ def init_db():
             )
         """)
 
-        # Products table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 name TEXT NOT NULL,
-                sku TEXT UNIQUE NOT NULL,
+                sku TEXT NOT NULL,
                 category TEXT DEFAULT 'Others',
                 quantity INTEGER NOT NULL,
                 price REAL NOT NULL,
@@ -192,10 +178,10 @@ def init_db():
             )
         """)
 
-        # Stock history table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS stock_history (
                 id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
                 product_name TEXT,
                 sku TEXT,
@@ -206,7 +192,6 @@ def init_db():
         """)
 
     else:
-        # Users table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -215,49 +200,56 @@ def init_db():
             )
         """)
 
-        # Suppliers table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS suppliers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
                 name TEXT NOT NULL,
                 phone TEXT,
                 email TEXT,
-                address TEXT
+                address TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
 
-        # Products table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
                 name TEXT NOT NULL,
-                sku TEXT UNIQUE NOT NULL,
+                sku TEXT NOT NULL,
                 category TEXT DEFAULT 'Others',
                 quantity INTEGER NOT NULL,
                 price REAL NOT NULL,
                 supplier_id INTEGER,
+                FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
             )
         """)
 
-        # Stock history table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS stock_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
                 product_id INTEGER,
                 product_name TEXT,
                 sku TEXT,
                 movement_type TEXT,
                 quantity INTEGER,
                 date TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (product_id) REFERENCES products(id)
             )
         """)
 
     # ---------------- SAFE DATABASE UPGRADES ----------------
+    add_column_if_missing(cursor, "suppliers", "user_id", "INTEGER")
+
+    add_column_if_missing(cursor, "products", "user_id", "INTEGER")
     add_column_if_missing(cursor, "products", "category", "TEXT DEFAULT 'Others'")
     add_column_if_missing(cursor, "products", "supplier_id", "INTEGER")
 
+    add_column_if_missing(cursor, "stock_history", "user_id", "INTEGER")
     add_column_if_missing(cursor, "stock_history", "product_id", "INTEGER")
     add_column_if_missing(cursor, "stock_history", "product_name", "TEXT")
     add_column_if_missing(cursor, "stock_history", "sku", "TEXT")
@@ -279,6 +271,35 @@ def init_db():
             INSERT INTO users (username, password)
             VALUES (?, ?)
         """), ("admin", hash_password("1234")))
+
+    # Get admin id for old existing data migration
+    cursor.execute(convert_placeholders("""
+        SELECT id
+        FROM users
+        WHERE username = ?
+    """), ("admin",))
+
+    admin_user = cursor.fetchone()
+    admin_id = admin_user["id"] if admin_user else 1
+
+    # Assign old global data to admin so new users start clean
+    cursor.execute(convert_placeholders("""
+        UPDATE suppliers
+        SET user_id = ?
+        WHERE user_id IS NULL
+    """), (admin_id,))
+
+    cursor.execute(convert_placeholders("""
+        UPDATE products
+        SET user_id = ?
+        WHERE user_id IS NULL
+    """), (admin_id,))
+
+    cursor.execute(convert_placeholders("""
+        UPDATE stock_history
+        SET user_id = ?
+        WHERE user_id IS NULL
+    """), (admin_id,))
 
     # Fix old products where category is empty or NULL
     cursor.execute("""
@@ -311,7 +332,7 @@ def get_user_by_username(username):
 
 
 # ---------------- PRODUCT FUNCTIONS ----------------
-def add_product(name, sku, category, quantity, price, supplier_id=None):
+def add_product(user_id, name, sku, category, quantity, price, supplier_id=None):
     if supplier_id == "":
         supplier_id = None
 
@@ -319,45 +340,54 @@ def add_product(name, sku, category, quantity, price, supplier_id=None):
         category = "Others"
 
     execute_query("""
-        INSERT INTO products (name, sku, category, quantity, price, supplier_id)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (name, sku, category, quantity, price, supplier_id))
+        INSERT INTO products (user_id, name, sku, category, quantity, price, supplier_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, name, sku, category, quantity, price, supplier_id))
 
 
-def get_all_products():
+def get_all_products(user_id):
     return fetch_all("""
         SELECT 
             products.*,
             suppliers.name AS supplier_name
         FROM products
-        LEFT JOIN suppliers ON products.supplier_id = suppliers.id
+        LEFT JOIN suppliers 
+            ON products.supplier_id = suppliers.id
+            AND suppliers.user_id = products.user_id
+        WHERE products.user_id = ?
         ORDER BY products.id DESC
-    """)
+    """, (user_id,))
 
 
-def get_product_by_id(pid):
+def get_product_by_id(user_id, pid):
     return fetch_one("""
         SELECT 
             products.*,
             suppliers.name AS supplier_name
         FROM products
-        LEFT JOIN suppliers ON products.supplier_id = suppliers.id
+        LEFT JOIN suppliers 
+            ON products.supplier_id = suppliers.id
+            AND suppliers.user_id = products.user_id
         WHERE products.id = ?
-    """, (pid,))
+        AND products.user_id = ?
+    """, (pid, user_id))
 
 
-def get_product_by_sku(sku):
+def get_product_by_sku(user_id, sku):
     return fetch_one("""
         SELECT 
             products.*,
             suppliers.name AS supplier_name
         FROM products
-        LEFT JOIN suppliers ON products.supplier_id = suppliers.id
+        LEFT JOIN suppliers 
+            ON products.supplier_id = suppliers.id
+            AND suppliers.user_id = products.user_id
         WHERE products.sku = ?
-    """, (sku,))
+        AND products.user_id = ?
+    """, (sku, user_id))
 
 
-def update_product(pid, name, sku, category, quantity, price, supplier_id=None):
+def update_product(user_id, pid, name, sku, category, quantity, price, supplier_id=None):
     if supplier_id == "":
         supplier_id = None
 
@@ -368,89 +398,126 @@ def update_product(pid, name, sku, category, quantity, price, supplier_id=None):
         UPDATE products
         SET name = ?, sku = ?, category = ?, quantity = ?, price = ?, supplier_id = ?
         WHERE id = ?
-    """, (name, sku, category, quantity, price, supplier_id, pid))
+        AND user_id = ?
+    """, (name, sku, category, quantity, price, supplier_id, pid, user_id))
 
 
-def delete_product(pid):
+def delete_product(user_id, pid):
     execute_query("""
         DELETE FROM products
         WHERE id = ?
-    """, (pid,))
+        AND user_id = ?
+    """, (pid, user_id))
 
 
 # ---------------- STOCK HISTORY FUNCTIONS ----------------
-def add_stock_history(product_id, product_name, sku, movement_type, quantity):
+def add_stock_history(user_id, product_id, product_name, sku, movement_type, quantity):
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     execute_query("""
-        INSERT INTO stock_history (product_id, product_name, sku, movement_type, quantity, date)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (product_id, product_name, sku, movement_type, quantity, date))
+        INSERT INTO stock_history (user_id, product_id, product_name, sku, movement_type, quantity, date)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, product_id, product_name, sku, movement_type, quantity, date))
 
 
-def get_stock_history():
+def get_stock_history(user_id):
     return fetch_all("""
         SELECT *
         FROM stock_history
+        WHERE user_id = ?
         ORDER BY id DESC
-    """)
+    """, (user_id,))
 
 
-def get_recent_stock_movements():
+def get_product_stock_history(user_id, sku):
     return fetch_all("""
         SELECT *
         FROM stock_history
+        WHERE user_id = ?
+        AND sku = ?
+        ORDER BY id DESC
+    """, (user_id, sku))
+
+
+def get_recent_stock_movements(user_id):
+    return fetch_all("""
+        SELECT *
+        FROM stock_history
+        WHERE user_id = ?
         ORDER BY id DESC
         LIMIT 5
-    """)
+    """, (user_id,))
 
 
 # ---------------- REPORT FUNCTIONS ----------------
-def get_report_data():
+def get_report_data(user_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) AS count FROM products")
+    cursor.execute(convert_placeholders("""
+        SELECT COUNT(*) AS count 
+        FROM products
+        WHERE user_id = ?
+    """), (user_id,))
     row = cursor.fetchone()
     total_products = row["count"] if is_postgres() else row[0]
 
-    cursor.execute("SELECT SUM(quantity) AS total FROM products")
+    cursor.execute(convert_placeholders("""
+        SELECT SUM(quantity) AS total 
+        FROM products
+        WHERE user_id = ?
+    """), (user_id,))
     row = cursor.fetchone()
     total_stock = row["total"] if is_postgres() else row[0]
     if total_stock is None:
         total_stock = 0
 
-    cursor.execute("SELECT SUM(quantity * price) AS total FROM products")
+    cursor.execute(convert_placeholders("""
+        SELECT SUM(quantity * price) AS total 
+        FROM products
+        WHERE user_id = ?
+    """), (user_id,))
     row = cursor.fetchone()
     total_value = row["total"] if is_postgres() else row[0]
     if total_value is None:
         total_value = 0
 
-    cursor.execute("SELECT COUNT(*) AS count FROM products WHERE quantity <= 5")
+    cursor.execute(convert_placeholders("""
+        SELECT COUNT(*) AS count 
+        FROM products 
+        WHERE quantity <= 5
+        AND user_id = ?
+    """), (user_id,))
     row = cursor.fetchone()
     low_stock_count = row["count"] if is_postgres() else row[0]
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT SUM(quantity) AS total
         FROM stock_history
         WHERE movement_type = 'Stock In'
-    """)
+        AND user_id = ?
+    """), (user_id,))
     row = cursor.fetchone()
     total_stock_in = row["total"] if is_postgres() else row[0]
     if total_stock_in is None:
         total_stock_in = 0
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT SUM(quantity) AS total
         FROM stock_history
         WHERE movement_type = 'Stock Out'
-    """)
+        AND user_id = ?
+    """), (user_id,))
     row = cursor.fetchone()
     total_stock_out = row["total"] if is_postgres() else row[0]
     if total_stock_out is None:
         total_stock_out = 0
 
-    cursor.execute("SELECT COUNT(*) AS count FROM stock_history")
+    cursor.execute(convert_placeholders("""
+        SELECT COUNT(*) AS count 
+        FROM stock_history
+        WHERE user_id = ?
+    """), (user_id,))
     row = cursor.fetchone()
     total_movements = row["count"] if is_postgres() else row[0]
 
@@ -468,49 +535,61 @@ def get_report_data():
     }
 
 
-def get_top_stock_products():
+def get_top_stock_products(user_id):
     return fetch_all("""
         SELECT *
         FROM products
+        WHERE user_id = ?
         ORDER BY quantity DESC
         LIMIT 5
-    """)
+    """, (user_id,))
 
 
 # ---------------- SUPPLIER FUNCTIONS ----------------
-def add_supplier(name, phone, email, address):
+def add_supplier(user_id, name, phone, email, address):
     execute_query("""
-        INSERT INTO suppliers (name, phone, email, address)
-        VALUES (?, ?, ?, ?)
-    """, (name, phone, email, address))
+        INSERT INTO suppliers (user_id, name, phone, email, address)
+        VALUES (?, ?, ?, ?, ?)
+    """, (user_id, name, phone, email, address))
 
 
-def get_all_suppliers():
+def get_all_suppliers(user_id):
     return fetch_all("""
         SELECT *
         FROM suppliers
+        WHERE user_id = ?
         ORDER BY id DESC
-    """)
+    """, (user_id,))
 
 
-def get_supplier_by_id(sid):
+def get_supplier_by_id(user_id, sid):
     return fetch_one("""
         SELECT *
         FROM suppliers
         WHERE id = ?
-    """, (sid,))
+        AND user_id = ?
+    """, (sid, user_id))
 
 
-def update_supplier(sid, name, phone, email, address):
+def update_supplier(user_id, sid, name, phone, email, address):
     execute_query("""
         UPDATE suppliers
         SET name = ?, phone = ?, email = ?, address = ?
         WHERE id = ?
-    """, (name, phone, email, address, sid))
+        AND user_id = ?
+    """, (name, phone, email, address, sid, user_id))
 
 
-def delete_supplier(sid):
+def delete_supplier(user_id, sid):
+    execute_query("""
+        UPDATE products
+        SET supplier_id = NULL
+        WHERE supplier_id = ?
+        AND user_id = ?
+    """, (sid, user_id))
+
     execute_query("""
         DELETE FROM suppliers
         WHERE id = ?
-    """, (sid,))
+        AND user_id = ?
+    """, (sid, user_id))

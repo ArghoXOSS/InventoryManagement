@@ -19,9 +19,52 @@ app = Flask(__name__)
 
 app.secret_key = os.getenv("SECRET_KEY", "fallback-secret-key-change-this")
 
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") == "production"
+
 
 # Initialize database
 init_db()
+
+
+# ---------------- HELPER FUNCTIONS ----------------
+def get_current_user_id():
+    """
+    Returns logged-in user's ID from session.
+    Also supports older sessions that only had session['user'].
+    """
+    if "user_id" in session:
+        return session["user_id"]
+
+    if "user" in session:
+        user = get_user_by_username(session["user"])
+        if user:
+            session["user_id"] = user["id"]
+            return user["id"]
+
+    session.clear()
+    return None
+
+
+def scalar_value(row, key, index=0, default=0):
+    """
+    Works with both:
+    - SQLite row access by index
+    - PostgreSQL RealDictCursor access by key
+    """
+    if row is None:
+        return default
+
+    try:
+        value = row[key]
+    except Exception:
+        value = row[index]
+
+    if value is None:
+        return default
+
+    return value
 
 
 # ---------------- ROOT ----------------
@@ -45,7 +88,9 @@ def login():
         user = get_user_by_username(username)
 
         if user and verify_password(user["password"], password):
+            session.clear()
             session["user"] = username
+            session["user_id"] = user["id"]
 
             # Upgrade old plain-text passwords to hashed passwords after successful login
             if not user["password"].startswith("scrypt:") and not user["password"].startswith("pbkdf2:"):
@@ -95,7 +140,7 @@ def signup():
 
         try:
             add_user(username, password)
-        except sqlite3.IntegrityError:
+        except Exception:
             flash("Username already exists.", "error")
             return redirect("/signup")
 
@@ -117,88 +162,120 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM products")
-    total_products = cursor.fetchone()[0]
+    cursor.execute(convert_placeholders("""
+        SELECT COUNT(*) AS count
+        FROM products
+        WHERE user_id = ?
+    """), (user_id,))
+    total_products = scalar_value(cursor.fetchone(), "count")
 
-    cursor.execute("SELECT SUM(quantity) FROM products")
-    total_stock = cursor.fetchone()[0] or 0
+    cursor.execute(convert_placeholders("""
+        SELECT SUM(quantity) AS total
+        FROM products
+        WHERE user_id = ?
+    """), (user_id,))
+    total_stock = scalar_value(cursor.fetchone(), "total")
 
-    cursor.execute("SELECT COUNT(*) FROM products WHERE quantity <= 5")
-    low_stock_count = cursor.fetchone()[0]
+    cursor.execute(convert_placeholders("""
+        SELECT COUNT(*) AS count
+        FROM products
+        WHERE user_id = ?
+        AND quantity <= 5
+    """), (user_id,))
+    low_stock_count = scalar_value(cursor.fetchone(), "count")
 
-    cursor.execute("SELECT SUM(price * quantity) FROM products")
-    total_stock_value = cursor.fetchone()[0] or 0
+    cursor.execute(convert_placeholders("""
+        SELECT SUM(price * quantity) AS total
+        FROM products
+        WHERE user_id = ?
+    """), (user_id,))
+    total_stock_value = scalar_value(cursor.fetchone(), "total")
 
-    cursor.execute("SELECT COUNT(*) FROM suppliers")
-    total_suppliers = cursor.fetchone()[0]
+    cursor.execute(convert_placeholders("""
+        SELECT COUNT(*) AS count
+        FROM suppliers
+        WHERE user_id = ?
+    """), (user_id,))
+    total_suppliers = scalar_value(cursor.fetchone(), "count")
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT name, quantity
         FROM products
+        WHERE user_id = ?
         ORDER BY quantity DESC
         LIMIT 8
-    """)
+    """), (user_id,))
     chart_products = cursor.fetchall()
 
     product_names = [row["name"] for row in chart_products]
     product_quantities = [row["quantity"] for row in chart_products]
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT 
             COALESCE(NULLIF(category, ''), 'Others') AS category_name,
             COUNT(*) AS product_count
         FROM products
+        WHERE user_id = ?
         GROUP BY COALESCE(NULLIF(category, ''), 'Others')
         ORDER BY product_count DESC
-    """)
+    """), (user_id,))
     category_rows = cursor.fetchall()
 
     category_names = [row["category_name"] for row in category_rows]
     category_counts = [row["product_count"] for row in category_rows]
 
-    cursor.execute("""
-        SELECT SUM(quantity)
+    cursor.execute(convert_placeholders("""
+        SELECT SUM(quantity) AS total
         FROM stock_history
-        WHERE movement_type = 'Stock In'
-    """)
-    total_stock_in = cursor.fetchone()[0] or 0
+        WHERE user_id = ?
+        AND movement_type = 'Stock In'
+    """), (user_id,))
+    total_stock_in = scalar_value(cursor.fetchone(), "total")
 
-    cursor.execute("""
-        SELECT SUM(quantity)
+    cursor.execute(convert_placeholders("""
+        SELECT SUM(quantity) AS total
         FROM stock_history
-        WHERE movement_type = 'Stock Out'
-    """)
-    total_stock_out = cursor.fetchone()[0] or 0
+        WHERE user_id = ?
+        AND movement_type = 'Stock Out'
+    """), (user_id,))
+    total_stock_out = scalar_value(cursor.fetchone(), "total")
 
     stock_movement_labels = ["Stock In", "Stock Out"]
     stock_movement_values = [total_stock_in, total_stock_out]
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT *
         FROM stock_history
+        WHERE user_id = ?
         ORDER BY id DESC
         LIMIT 5
-    """)
+    """), (user_id,))
     recent_movements = cursor.fetchall()
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT *
         FROM products
-        WHERE quantity <= 5
+        WHERE user_id = ?
+        AND quantity <= 5
         ORDER BY quantity ASC
         LIMIT 5
-    """)
+    """), (user_id,))
     low_stock_products = cursor.fetchall()
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT name, quantity
         FROM products
+        WHERE user_id = ?
         ORDER BY quantity DESC
         LIMIT 1
-    """)
+    """), (user_id,))
     most_stocked_product = cursor.fetchone()
 
     if most_stocked_product:
@@ -208,12 +285,13 @@ def dashboard():
         most_stocked_name = "N/A"
         most_stocked_quantity = 0
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT name, quantity, price, (quantity * price) AS total_value
         FROM products
+        WHERE user_id = ?
         ORDER BY total_value DESC
         LIMIT 1
-    """)
+    """), (user_id,))
     most_valuable_product = cursor.fetchone()
 
     if most_valuable_product:
@@ -236,6 +314,7 @@ def dashboard():
         inventory_health = "Needs Attention"
         inventory_health_message = "Several products are low in stock."
 
+    cursor.close()
     conn.close()
 
     return render_template(
@@ -268,24 +347,17 @@ def dashboard():
 @app.route("/product/<sku>")
 @login_required
 def product_details(sku):
-    product = get_product_by_sku(sku)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    product = get_product_by_sku(user_id, sku)
 
     if product is None:
         flash("Product not found.", "error")
         return redirect("/products")
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT *
-        FROM stock_history
-        WHERE sku = ?
-        ORDER BY id DESC
-    """, (sku,))
-
-    history = cursor.fetchall()
-    conn.close()
+    history = get_product_stock_history(user_id, sku)
 
     total_value = product["price"] * product["quantity"]
 
@@ -301,12 +373,16 @@ def product_details(sku):
 @app.route("/products")
 @login_required
 def products():
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
     search_query = request.args.get("search", "").strip().lower()
     sort_by = request.args.get("sort", "")
     category_filter = request.args.get("category", "")
 
-    items = get_all_products()
-    suppliers = get_all_suppliers()
+    items = get_all_products(user_id)
+    suppliers = get_all_suppliers(user_id)
 
     if search_query:
         items = [
@@ -379,6 +455,10 @@ def products():
 @app.route("/add", methods=["POST"])
 @login_required
 def add():
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
     name = request.form.get("name", "").strip()
     sku = request.form.get("sku", "").strip()
     category = request.form.get("category", "Others").strip()
@@ -411,9 +491,15 @@ def add():
     if supplier_id == "":
         supplier_id = None
 
+    if supplier_id is not None:
+        supplier = get_supplier_by_id(user_id, supplier_id)
+        if supplier is None:
+            flash("Invalid supplier selected.", "error")
+            return redirect("/products")
+
     try:
-        add_product(name, sku, category, quantity, price, supplier_id)
-    except sqlite3.IntegrityError:
+        add_product(user_id, name, sku, category, quantity, price, supplier_id)
+    except Exception:
         flash("SKU already exists. Please use a unique SKU.", "error")
         return redirect("/products")
 
@@ -425,7 +511,18 @@ def add():
 @app.route("/delete/<int:pid>")
 @login_required
 def delete(pid):
-    delete_product(pid)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    product = get_product_by_id(user_id, pid)
+
+    if product is None:
+        flash("Product not found.", "error")
+        return redirect("/products")
+
+    delete_product(user_id, pid)
+
     flash("Product deleted successfully!", "success")
     return redirect("/products")
 
@@ -434,8 +531,12 @@ def delete(pid):
 @app.route("/edit/<int:pid>")
 @login_required
 def edit(pid):
-    product = get_product_by_id(pid)
-    suppliers = get_all_suppliers()
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    product = get_product_by_id(user_id, pid)
+    suppliers = get_all_suppliers(user_id)
 
     if product is None:
         flash("Product not found.", "error")
@@ -452,7 +553,11 @@ def edit(pid):
 @app.route("/update/<int:pid>", methods=["POST"])
 @login_required
 def update(pid):
-    product = get_product_by_id(pid)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    product = get_product_by_id(user_id, pid)
 
     if product is None:
         flash("Product not found.", "error")
@@ -490,9 +595,15 @@ def update(pid):
     if supplier_id == "":
         supplier_id = None
 
+    if supplier_id is not None:
+        supplier = get_supplier_by_id(user_id, supplier_id)
+        if supplier is None:
+            flash("Invalid supplier selected.", "error")
+            return redirect(f"/edit/{pid}")
+
     try:
-        update_product(pid, name, sku, category, quantity, price, supplier_id)
-    except sqlite3.IntegrityError:
+        update_product(user_id, pid, name, sku, category, quantity, price, supplier_id)
+    except Exception:
         flash("SKU already exists. Please use a unique SKU.", "error")
         return redirect(f"/edit/{pid}")
 
@@ -504,7 +615,11 @@ def update(pid):
 @app.route("/low-stock")
 @login_required
 def low_stock_page():
-    items = get_all_products()
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    items = get_all_products(user_id)
     low_stock_items = [item for item in items if item["quantity"] <= 5]
 
     total_low_stock = len(low_stock_items)
@@ -522,7 +637,11 @@ def low_stock_page():
 @app.route("/stock-in/<int:pid>")
 @login_required
 def stock_in_page(pid):
-    product = get_product_by_id(pid)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    product = get_product_by_id(user_id, pid)
 
     if product is None:
         flash("Product not found.", "error")
@@ -535,7 +654,11 @@ def stock_in_page(pid):
 @app.route("/stock-in/<int:pid>", methods=["POST"])
 @login_required
 def stock_in(pid):
-    product = get_product_by_id(pid)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    product = get_product_by_id(user_id, pid)
 
     if product is None:
         flash("Product not found.", "error")
@@ -554,6 +677,7 @@ def stock_in(pid):
     new_quantity = product["quantity"] + amount
 
     update_product(
+        user_id,
         pid,
         product["name"],
         product["sku"],
@@ -564,6 +688,7 @@ def stock_in(pid):
     )
 
     add_stock_history(
+        user_id,
         pid,
         product["name"],
         product["sku"],
@@ -579,7 +704,11 @@ def stock_in(pid):
 @app.route("/stock-out/<int:pid>")
 @login_required
 def stock_out_page(pid):
-    product = get_product_by_id(pid)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    product = get_product_by_id(user_id, pid)
 
     if product is None:
         flash("Product not found.", "error")
@@ -592,7 +721,11 @@ def stock_out_page(pid):
 @app.route("/stock-out/<int:pid>", methods=["POST"])
 @login_required
 def stock_out(pid):
-    product = get_product_by_id(pid)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    product = get_product_by_id(user_id, pid)
 
     if product is None:
         flash("Product not found.", "error")
@@ -615,6 +748,7 @@ def stock_out(pid):
     new_quantity = product["quantity"] - amount
 
     update_product(
+        user_id,
         pid,
         product["name"],
         product["sku"],
@@ -625,6 +759,7 @@ def stock_out(pid):
     )
 
     add_stock_history(
+        user_id,
         pid,
         product["name"],
         product["sku"],
@@ -640,7 +775,11 @@ def stock_out(pid):
 @app.route("/stock-history")
 @login_required
 def stock_history():
-    history = get_stock_history()
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    history = get_stock_history(user_id)
     return render_template("stock_history.html", history=history)
 
 
@@ -648,9 +787,13 @@ def stock_history():
 @app.route("/reports")
 @login_required
 def reports():
-    report = get_report_data()
-    top_products = get_top_stock_products()
-    recent_movements = get_recent_stock_movements()
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    report = get_report_data(user_id)
+    top_products = get_top_stock_products(user_id)
+    recent_movements = get_recent_stock_movements(user_id)
 
     return render_template(
         "reports.html",
@@ -664,48 +807,79 @@ def reports():
 @app.route("/print-report")
 @login_required
 def print_report():
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT 
             products.*,
             suppliers.name AS supplier_name
         FROM products
-        LEFT JOIN suppliers ON products.supplier_id = suppliers.id
+        LEFT JOIN suppliers 
+            ON products.supplier_id = suppliers.id
+            AND suppliers.user_id = products.user_id
+        WHERE products.user_id = ?
         ORDER BY products.id DESC
-    """)
+    """), (user_id,))
     products = cursor.fetchall()
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT *
         FROM suppliers
+        WHERE user_id = ?
         ORDER BY id DESC
-    """)
+    """), (user_id,))
     suppliers = cursor.fetchall()
 
-    cursor.execute("""
+    cursor.execute(convert_placeholders("""
         SELECT *
         FROM stock_history
+        WHERE user_id = ?
         ORDER BY id DESC
-    """)
+    """), (user_id,))
     stock_history_data = cursor.fetchall()
 
-    cursor.execute("SELECT COUNT(*) FROM products")
-    total_products = cursor.fetchone()[0]
+    cursor.execute(convert_placeholders("""
+        SELECT COUNT(*) AS count
+        FROM products
+        WHERE user_id = ?
+    """), (user_id,))
+    total_products = scalar_value(cursor.fetchone(), "count")
 
-    cursor.execute("SELECT SUM(quantity) FROM products")
-    total_stock = cursor.fetchone()[0] or 0
+    cursor.execute(convert_placeholders("""
+        SELECT SUM(quantity) AS total
+        FROM products
+        WHERE user_id = ?
+    """), (user_id,))
+    total_stock = scalar_value(cursor.fetchone(), "total")
 
-    cursor.execute("SELECT COUNT(*) FROM products WHERE quantity <= 5")
-    low_stock = cursor.fetchone()[0]
+    cursor.execute(convert_placeholders("""
+        SELECT COUNT(*) AS count
+        FROM products
+        WHERE user_id = ?
+        AND quantity <= 5
+    """), (user_id,))
+    low_stock = scalar_value(cursor.fetchone(), "count")
 
-    cursor.execute("SELECT SUM(price * quantity) FROM products")
-    total_stock_value = cursor.fetchone()[0] or 0
+    cursor.execute(convert_placeholders("""
+        SELECT SUM(price * quantity) AS total
+        FROM products
+        WHERE user_id = ?
+    """), (user_id,))
+    total_stock_value = scalar_value(cursor.fetchone(), "total")
 
-    cursor.execute("SELECT COUNT(*) FROM suppliers")
-    total_suppliers = cursor.fetchone()[0]
+    cursor.execute(convert_placeholders("""
+        SELECT COUNT(*) AS count
+        FROM suppliers
+        WHERE user_id = ?
+    """), (user_id,))
+    total_suppliers = scalar_value(cursor.fetchone(), "count")
 
+    cursor.close()
     conn.close()
 
     return render_template(
@@ -725,7 +899,11 @@ def print_report():
 @app.route("/export-products")
 @login_required
 def export_products():
-    products = get_all_products()
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    products = get_all_products(user_id)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -771,7 +949,11 @@ def export_products():
 @app.route("/suppliers")
 @login_required
 def suppliers():
-    suppliers_data = get_all_suppliers()
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    suppliers_data = get_all_suppliers(user_id)
     return render_template("suppliers.html", suppliers=suppliers_data)
 
 
@@ -779,6 +961,10 @@ def suppliers():
 @app.route("/add-supplier", methods=["POST"])
 @login_required
 def add_supplier_route():
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
     name = request.form.get("name", "").strip()
     phone = request.form.get("phone", "").strip()
     email = request.form.get("email", "").strip()
@@ -788,7 +974,7 @@ def add_supplier_route():
         flash("Supplier name cannot be empty.", "error")
         return redirect("/suppliers")
 
-    add_supplier(name, phone, email, address)
+    add_supplier(user_id, name, phone, email, address)
 
     flash("Supplier added successfully!", "success")
     return redirect("/suppliers")
@@ -798,7 +984,11 @@ def add_supplier_route():
 @app.route("/edit-supplier/<int:sid>")
 @login_required
 def edit_supplier_page(sid):
-    supplier = get_supplier_by_id(sid)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    supplier = get_supplier_by_id(user_id, sid)
 
     if supplier is None:
         flash("Supplier not found.", "error")
@@ -811,7 +1001,11 @@ def edit_supplier_page(sid):
 @app.route("/update-supplier/<int:sid>", methods=["POST"])
 @login_required
 def update_supplier_route(sid):
-    supplier = get_supplier_by_id(sid)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    supplier = get_supplier_by_id(user_id, sid)
 
     if supplier is None:
         flash("Supplier not found.", "error")
@@ -826,7 +1020,7 @@ def update_supplier_route(sid):
         flash("Supplier name cannot be empty.", "error")
         return redirect(f"/edit-supplier/{sid}")
 
-    update_supplier(sid, name, phone, email, address)
+    update_supplier(user_id, sid, name, phone, email, address)
 
     flash("Supplier updated successfully!", "success")
     return redirect("/suppliers")
@@ -836,7 +1030,18 @@ def update_supplier_route(sid):
 @app.route("/delete-supplier/<int:sid>")
 @login_required
 def delete_supplier_route(sid):
-    delete_supplier(sid)
+    user_id = get_current_user_id()
+    if user_id is None:
+        return redirect("/login")
+
+    supplier = get_supplier_by_id(user_id, sid)
+
+    if supplier is None:
+        flash("Supplier not found.", "error")
+        return redirect("/suppliers")
+
+    delete_supplier(user_id, sid)
+
     flash("Supplier deleted successfully!", "success")
     return redirect("/suppliers")
 
