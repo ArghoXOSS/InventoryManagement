@@ -3,6 +3,8 @@
 <head>
     <title>Suppliers - Inventory Management</title>
 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <style>
         * {
             box-sizing: border-box;
@@ -366,14 +368,34 @@
         }
 
         @media screen and (max-width: 740px) {
+            body {
+                background-image:
+                    linear-gradient(rgba(2, 6, 23, 0.80), rgba(2, 6, 23, 0.90)),
+                    url("{{ url_for('static', filename='bg1-mobile.jpg') }}");
+                background-size: cover;
+                background-position: center top;
+                background-repeat: no-repeat;
+                background-attachment: scroll;
+            }
+
             .navbar {
                 flex-direction: column;
                 gap: 12px;
                 padding: 15px;
             }
 
+            .navbar h2 {
+                font-size: 22px;
+                text-align: center;
+            }
+
             .navbar-links {
                 justify-content: center;
+            }
+
+            .navbar a {
+                font-size: 12px;
+                padding: 8px 9px;
             }
 
             .container {
@@ -396,6 +418,11 @@
             button {
                 grid-column: span 1;
             }
+
+            .section {
+                padding: 16px;
+                border-radius: 16px;
+            }
         }
     </style>
 </head>
@@ -413,9 +440,11 @@
             <a href="/reports">Reports</a>
             <a href="/export-products">Export CSV</a>
             <a class="active" href="/suppliers">Suppliers</a>
+
             {% if session.get("user") == "admin" %}
-    <a href="/admin/users">Admin Panel</a>
-{% endif %}
+                <a href="/admin/users">Admin Panel</a>
+            {% endif %}
+
             <a href="/logout">Logout</a>
         </div>
     </div>
@@ -518,9 +547,11 @@
 
                                     <td class="actions">
                                         <a class="btn edit" href="/edit-supplier/{{ supplier.id }}">Edit</a>
-                                        <a class="btn delete"
-                                           href="/delete-supplier/{{ supplier.id }}"
-                                           onclick="return confirm('Are you sure you want to delete this supplier?')">
+                                        <a
+                                            class="btn delete"
+                                            href="/delete-supplier/{{ supplier.id }}"
+                                            onclick="return confirm('Are you sure you want to delete this supplier?')"
+                                        >
                                             Delete
                                         </a>
                                     </td>
@@ -543,7 +574,7 @@
     </div>
 
     <script>
-        const backgrounds = [
+        const desktopBackgrounds = [
             "{{ url_for('static', filename='bg1.jpg') }}",
             "{{ url_for('static', filename='bg2.jpg') }}",
             "{{ url_for('static', filename='bg3.jpg') }}",
@@ -552,16 +583,63 @@
             "{{ url_for('static', filename='bg6.jpg') }}"
         ];
 
+        const mobileBackgrounds = [
+            "{{ url_for('static', filename='bg1-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg2-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg3-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg4-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg5-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg6-mobile.jpg') }}"
+        ];
+
         let currentBg = 0;
 
-        function changeBackground() {
-            currentBg = (currentBg + 1) % backgrounds.length;
-
-            document.body.style.backgroundImage =
-                `linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82)), url('${backgrounds[currentBg]}')`;
+        function isMobileScreen() {
+            return window.innerWidth <= 740;
         }
 
-        setInterval(changeBackground, 5000);
+        function getBackgroundSet() {
+            return isMobileScreen() ? mobileBackgrounds : desktopBackgrounds;
+        }
+
+        function getOverlay() {
+            if (isMobileScreen()) {
+                return "linear-gradient(rgba(2, 6, 23, 0.80), rgba(2, 6, 23, 0.90))";
+            }
+
+            return "linear-gradient(rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.82))";
+        }
+
+        function applyBackground() {
+            const images = getBackgroundSet();
+            const selectedImage = images[currentBg % images.length];
+
+            document.body.style.backgroundImage =
+                `${getOverlay()}, url('${selectedImage}')`;
+
+            document.body.style.backgroundSize = "cover";
+            document.body.style.backgroundRepeat = "no-repeat";
+
+            if (isMobileScreen()) {
+                document.body.style.backgroundPosition = "center top";
+                document.body.style.backgroundAttachment = "scroll";
+            } else {
+                document.body.style.backgroundPosition = "center";
+                document.body.style.backgroundAttachment = "fixed";
+            }
+        }
+
+        applyBackground();
+
+        setInterval(() => {
+            const images = getBackgroundSet();
+            currentBg = (currentBg + 1) % images.length;
+            applyBackground();
+        }, 7000);
+
+        window.addEventListener("resize", () => {
+            applyBackground();
+        });
     </script>
 
 </body>

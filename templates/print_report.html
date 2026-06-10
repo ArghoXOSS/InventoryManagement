@@ -3,6 +3,8 @@
 <head>
     <title>Printable Inventory Report</title>
 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <style>
         * {
             box-sizing: border-box;
@@ -18,6 +20,8 @@
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
+            background-repeat: no-repeat;
+            transition: background-image 1.2s ease-in-out;
             min-height: 100vh;
             padding: 30px;
         }
@@ -31,6 +35,7 @@
             border: 1px solid rgba(255, 255, 255, 0.14);
             box-shadow: 0 25px 75px rgba(0, 0, 0, 0.55);
             backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
         }
 
         .top-bar {
@@ -332,6 +337,7 @@
                 box-shadow: none;
                 border: none;
                 backdrop-filter: none;
+                -webkit-backdrop-filter: none;
             }
 
             .btn-area {
@@ -510,13 +516,21 @@
             }
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 740px) {
             body {
+                background:
+                    linear-gradient(rgba(2, 6, 23, 0.88), rgba(2, 6, 23, 0.94)),
+                    url("{{ url_for('static', filename='bg1-mobile.jpg') }}");
+                background-size: cover;
+                background-position: center top;
+                background-repeat: no-repeat;
+                background-attachment: scroll;
                 padding: 14px;
             }
 
             .report-container {
                 padding: 20px;
+                border-radius: 18px;
             }
 
             .brand-block h1 {
@@ -811,6 +825,74 @@
     </div>
 
     <script>
+        const desktopBackgrounds = [
+            "{{ url_for('static', filename='bg1.jpg') }}",
+            "{{ url_for('static', filename='bg2.jpg') }}",
+            "{{ url_for('static', filename='bg3.jpg') }}",
+            "{{ url_for('static', filename='bg4.jpg') }}",
+            "{{ url_for('static', filename='bg5.jpg') }}",
+            "{{ url_for('static', filename='bg6.jpg') }}"
+        ];
+
+        const mobileBackgrounds = [
+            "{{ url_for('static', filename='bg1-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg2-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg3-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg4-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg5-mobile.jpg') }}",
+            "{{ url_for('static', filename='bg6-mobile.jpg') }}"
+        ];
+
+        let currentBg = 0;
+
+        function isMobileScreen() {
+            return window.innerWidth <= 740;
+        }
+
+        function getBackgroundSet() {
+            return isMobileScreen() ? mobileBackgrounds : desktopBackgrounds;
+        }
+
+        function getOverlay() {
+            if (isMobileScreen()) {
+                return "linear-gradient(rgba(2, 6, 23, 0.88), rgba(2, 6, 23, 0.94))";
+            }
+
+            return "linear-gradient(rgba(2, 6, 23, 0.86), rgba(2, 6, 23, 0.92))";
+        }
+
+        function applyBackground() {
+            const images = getBackgroundSet();
+            const selectedImage = images[currentBg % images.length];
+
+            document.body.style.backgroundImage =
+                `${getOverlay()}, url('${selectedImage}')`;
+
+            document.body.style.backgroundSize = "cover";
+            document.body.style.backgroundRepeat = "no-repeat";
+
+            if (isMobileScreen()) {
+                document.body.style.backgroundPosition = "center top";
+                document.body.style.backgroundAttachment = "scroll";
+            } else {
+                document.body.style.backgroundPosition = "center";
+                document.body.style.backgroundAttachment = "fixed";
+            }
+        }
+
+        applyBackground();
+
+        setInterval(() => {
+            const images = getBackgroundSet();
+            currentBg = (currentBg + 1) % images.length;
+            applyBackground();
+        }, 7000);
+
+        window.addEventListener("resize", () => {
+            applyBackground();
+        });
+
+
         const printDate = document.getElementById("printDate");
         const now = new Date();
 
